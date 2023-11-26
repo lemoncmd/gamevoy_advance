@@ -34,7 +34,7 @@ mut:
 	r14_und u32
 pub mut:
 	r15      u32
-	cpsr     Psr
+	cpsr     Psr = u32(Flag.i) | u32(Flag.f) | u32(Mode.supervisor)
 	spsr_fiq Psr
 	spsr_svc Psr
 	spsr_abt Psr
