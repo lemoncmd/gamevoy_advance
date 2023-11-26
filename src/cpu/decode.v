@@ -6,14 +6,80 @@ fn (mut c Cpu) decode() {
 		return
 	}
 	opcode := Opcode(c.ctx.opcodes[0])
-	match opcode.base_opcode() {
-		0b0000_0000_1001 {}
+	base_opcode := opcode.base_opcode()
+	// don't forget nds supported ops
+	match base_opcode {
+		// data processing / psr transfer
+		0b00010_00_0_0000 {
+			// mrs cpsr
+		}
+		0b00010_01_0_0000 {
+			// msr cpsr register
+		}
+		0b00010_10_0_0000 {
+			// mrs spsr
+		}
+		0b00010_11_0_0000 {
+			// msr spsr register
+		}
+		0b00110_01_0_0000...0b00110_01_0_1111 {
+			// msr cpsr imm
+		}
+		0b00110_11_0_0000...0b00110_11_0_1111 {
+			// msr spsr imm
+		}
+		// swap
+		0b00010_0_00_1001 {
+			// swp
+		}
+		0b00010_1_00_1001 {
+			// swpb
+		}
+		// multiply
+		0b000_0000_0_1001, 0b000_0000_1_1001 {
+			// mul
+		}
+		0b000_0001_0_1001, 0b000_0001_1_1001 {
+			// mla
+		}
+		0b000_0100_0_1001, 0b000_0100_1_1001 {
+			// umull
+		}
+		0b000_0101_0_1001, 0b000_0101_1_1001 {
+			// umlal
+		}
+		0b000_0110_0_1001, 0b000_0110_1_1001 {
+			// smull
+		}
+		0b000_0111_0_1001, 0b000_0111_1_1001 {
+			// smlal
+		}
+		// bx
 		0b0001_0010_0001 {
-			if opcode.rn() == 0xF && opcode.rd() == 0xF && opcode.rs() == 0xF {
-				// branch and exchange
+			// bx
+		}
+		// data transfer
+		0b010_0_0000_0000...0b010_1_1111_1111 {
+			// single data transfer
+		}
+		0b100_0_0000_0000...0b100_1_1111_1111 {
+			// block data transfer
+		}
+		// branch
+		0b101_0_0000_0000...0b101_0_1111_1111 {
+			// b
+		}
+		0b101_1_0000_0000...0b101_1_1111_1111 {
+			// bl
+		}
+		0b1111_0000_0000...0b1111_1111_1111 {
+			// swx
+		}
+		else {
+			if base_opcode & 0xE00 == 0 && base_opcode & 0b1001 == 0b1001 && base_opcode & 0b110 > 0 {
+				// half word
 			}
 		}
-		else {}
 	}
 	// undefined exception
 }
