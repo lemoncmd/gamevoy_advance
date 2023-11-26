@@ -10,8 +10,8 @@ mut:
 
 pub struct Cpu {
 mut:
-	ctx Ctx
-	reg register.Register
+	ctx  Ctx
+	regs register.Register
 }
 
 pub fn Cpu.new() Cpu {
@@ -23,4 +23,5 @@ pub fn (mut c Cpu) emulate_cycle() {
 		c.ctx.waitstates--
 		return
 	}
+	c.decode()
 }

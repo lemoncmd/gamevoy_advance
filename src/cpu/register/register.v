@@ -52,7 +52,7 @@ enum Mode {
 	system     = 0b11111
 }
 
-enum Flag as u32 {
+pub enum Flag as u32 {
 	t = 1 << 5
 	f = 1 << 6
 	i = 1 << 7
