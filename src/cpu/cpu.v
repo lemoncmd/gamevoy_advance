@@ -1,6 +1,7 @@
 module cpu
 
 import cpu.register { Register }
+import peripherals { Peripherals }
 
 struct Ctx {
 mut:
@@ -18,7 +19,7 @@ pub fn Cpu.new() Cpu {
 	return Cpu{}
 }
 
-pub fn (mut c Cpu) emulate_cycle() {
+pub fn (mut c Cpu) emulate_cycle(mut p Peripherals) {
 	if c.ctx.waitstates > 0 {
 		c.ctx.waitstates--
 		return
