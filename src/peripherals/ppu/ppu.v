@@ -37,13 +37,17 @@ pub fn (mut p Ppu) write(addr u32, val u32, size u32) {
 	match addr >> 24 {
 		0x05 {
 			base_addr := (addr >> 1) & 0x1FF
-			if size > 0xFFFF {
-				p.palette[base_addr] = u16(val)
-				p.palette[base_addr + 1] = u16(val >> 16)
-			} else {
-				shift := (addr & 1) << 3
-				p.palette[base_addr] &= ~(u16(size) << shift)
-				p.palette[base_addr] |= u16(val) << shift
+			match size {
+				0xFFFF_FFFF {
+					p.palette[base_addr] = u16(val)
+					p.palette[base_addr + 1] = u16(val >> 16)
+				}
+				0xFFFF {
+					p.palette[base_addr] = u16(val)
+				}
+				else {
+					p.palette[base_addr] = u16(val) | u16(val << 8)
+				}
 			}
 		}
 		0x06 {
@@ -52,16 +56,26 @@ pub fn (mut p Ppu) write(addr u32, val u32, size u32) {
 			} else {
 				addr & 0x1FFFF
 			}
-			if size > 0xFFFF {
-				p.vram[base_addr] = u16(val)
-				p.vram[base_addr + 1] = u16(val >> 16)
-			} else {
-				shift := (addr & 1) << 3
-				p.vram[base_addr] &= ~(u16(size) << shift)
-				p.vram[base_addr] |= u16(val) << shift
+			match size {
+				0xFFFF_FFFF {
+					p.vram[base_addr] = u16(val)
+					p.vram[base_addr + 1] = u16(val >> 16)
+				}
+				0xFFFF {
+					p.vram[base_addr] = u16(val)
+				}
+				else {
+					// TODO 0x14000 in Bitmap mode
+					if base_addr < 0x10000 {
+						p.vram[base_addr] = u16(val) | u16(val << 8)
+					}
+				}
 			}
 		}
 		0x07 {
+			if size == 0xFF {
+				return
+			}
 			base_addr := (addr >> 2) & 0xFF
 			shift := (addr & 3) << 3
 			p.oam[base_addr] &= ~(size << shift)
