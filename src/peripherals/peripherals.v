@@ -10,7 +10,7 @@ pub struct Peripherals {
 mut:
 	ewram ewram.EWram
 	iwram iwram.IWram
-	ppu ppu.Ppu
+	ppu   ppu.Ppu
 }
 
 pub fn (p &Peripherals) read(addr u32) u32 {
@@ -39,7 +39,7 @@ pub fn (mut p Peripherals) write(addr u32, val u32, size u32) {
 	match addr >> 24 {
 		0x02 { p.ewram.write(addr, val, size) }
 		0x03 { p.iwram.write(addr, val, size) }
-		0x05..0x07 { p.ppu.read(addr, val, size) }
+		0x05...0x07 { p.ppu.write(addr, val, size) }
 		else {}
 	}
 }
