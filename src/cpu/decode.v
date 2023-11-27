@@ -85,7 +85,7 @@ fn (mut c Cpu) decode() {
 }
 
 fn (mut c Cpu) decode_thumb() {
-	opcode := ThumbOpcode(u16(c.ctx.opcodes[0] >> (8 * u8(c.regs.r15 & 2 > 0))))
+	opcode := ThumbOpcode(u16(c.ctx.opcodes[0]))
 	match opcode.base_opcode() {
 		0b000_00_000...0b000_00_111 {
 			// left shift

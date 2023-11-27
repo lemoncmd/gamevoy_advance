@@ -12,5 +12,5 @@ pub fn Bios.new(rom []u32) Bios {
 }
 
 pub fn (b &Bios) read(addr u32) u32 {
-	return b.rom[addr >> 2]
+	return b.rom[addr >> 2] >> (addr & 3)
 }
