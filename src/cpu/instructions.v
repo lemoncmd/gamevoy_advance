@@ -24,6 +24,56 @@ fn (c &Cpu) cond(cond u8) bool {
 	}
 }
 
+fn (mut c Cpu) mov(bus &Peripherals, cond u8, s bool, dest u8, op2 u32, is_rs bool, carry ?bool) {
+	if !c.cond(cond) {
+		c.fetch(bus)
+		return
+	}
+	for {
+		match c.ctx.step {
+			0 {
+				c.regs.write(dest, op2)
+				if s {
+					if dest == 0xF {
+						c.regs.cpsr = c.regs.get_spsr()
+					} else {
+						if ca := carry {
+							c.regs.cpsr.set_flag(.c, ca)
+						}
+						c.regs.cpsr.set_flag(.z, op2 == 0)
+						c.regs.cpsr.set_flag(.n, op2 >> 31 > 0)
+					}
+				}
+				c.ctx.step = if dest == 0xF { 1 } else { 3 }
+				if is_rs {
+					return
+				}
+			}
+			1 {
+				val := c.read(bus, c.regs.r15, 0xFFFF_FFFF) or { return }
+				c.ctx.opcodes[1] = val
+				c.ctx.step = 2
+				return
+			}
+			2 {
+				val := c.read(bus, c.regs.r15 + 4, 0xFFFF_FFFF) or { return }
+				c.ctx.opcodes[2] = val
+				c.regs.r15 += 8
+				c.ctx.step = 3
+				return
+			}
+			3 {
+				c.fetch(bus) or { return }
+				c.ctx.step = 0
+				return
+			}
+			else {
+				return
+			}
+		}
+	}
+}
+
 fn (mut c Cpu) b(bus &Peripherals, cond u8, offset u32) {
 	if !c.cond(cond) {
 		c.fetch(bus)
@@ -74,55 +124,5 @@ fn (mut c Cpu) bl(bus &Peripherals, cond u8, offset u32) {
 			c.ctx.step = 0
 		}
 		else {}
-	}
-}
-
-fn (mut c Cpu) mov(bus &Peripherals, cond u8, s bool, dest u8, op2 u32, is_rs bool, carry ?bool) {
-	if !c.cond(cond) {
-		c.fetch(bus)
-		return
-	}
-	for {
-		match c.ctx.step {
-			0 {
-				c.regs.write(dest, op2)
-				if s {
-					if dest == 0xF {
-						c.regs.cpsr = c.regs.get_spsr()
-					} else {
-						if ca := carry {
-							c.regs.cpsr.set_flag(.c, ca)
-						}
-						c.regs.cpsr.set_flag(.z, op2 == 0)
-						c.regs.cpsr.set_flag(.n, op2 >> 31 > 0)
-					}
-				}
-				c.ctx.step = if dest == 0xF { 1 } else { 3 }
-				if is_rs {
-					return
-				}
-			}
-			1 {
-				val := c.read(bus, c.regs.r15, 0xFFFF_FFFF) or { return }
-				c.ctx.opcodes[1] = val
-				c.ctx.step = 2
-				return
-			}
-			2 {
-				val := c.read(bus, c.regs.r15 + 4, 0xFFFF_FFFF) or { return }
-				c.ctx.opcodes[2] = val
-				c.regs.r15 += 8
-				c.ctx.step = 3
-				return
-			}
-			3 {
-				c.fetch(bus) or { return }
-				c.ctx.step = 0
-				return
-			}
-			else {
-				return
-			}
-		}
 	}
 }
