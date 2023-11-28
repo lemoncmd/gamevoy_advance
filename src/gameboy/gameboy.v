@@ -18,6 +18,7 @@ pub fn Gameboy.new(b Bios) &Gameboy {
 		cpu: Cpu.new()
 		peripherals: Peripherals.new(b)
 	}
+	ret.cpu.init(ret.peripherals)
 	ret.init_gg()
 	return ret
 }
