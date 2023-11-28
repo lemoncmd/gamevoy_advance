@@ -1,8 +1,8 @@
 module main
 
-import cpu as _ { Cpu }
+import gameboy as _ { Gameboy }
 
 fn main() {
-	_ := Cpu.new()
-	println('Hello World!')
+	mut g := Gameboy.new()
+	g.run()!
 }

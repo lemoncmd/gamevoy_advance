@@ -52,7 +52,7 @@ const rendered_bg_in_mode = [
 	[0, 1, 2, 3],
 	[0, 1, 2],
 	[2, 3],
-]!
+]
 
 fn (mut p Ppu) render_tile_mode_bg(disp_cnt DispCnt) {
 	bg_enable := [

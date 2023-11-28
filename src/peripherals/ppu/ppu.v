@@ -48,6 +48,10 @@ pub mut:
 	vram_in_access bool
 }
 
+pub fn Ppu.new() Ppu {
+	return Ppu{}
+}
+
 pub fn (p &Ppu) read(addr u32) u32 {
 	return u32(p.read_16(addr)) | (u32(p.read_16(addr + 2)) << 16)
 }
@@ -319,7 +323,7 @@ fn (mut p Ppu) check_lyc_eq_ly() {
 	p.dispstat = u16(dispstat)
 }
 
-pub fn (mut p Ppu) emulate_cycle() {
+pub fn (mut p Ppu) emulate_cycle() bool {
 	mut dispstat := DispStat.from(p.dispstat)
 	p.cycle++
 	match p.cycle {
@@ -348,14 +352,20 @@ pub fn (mut p Ppu) emulate_cycle() {
 				228 {
 					p.vcount = 0
 					dispstat.clear(.vblank)
+					return true
 				}
 				else {}
 			}
 		}
 		else {}
 	}
+	return false
 }
 
 fn (mut p Ppu) render() {
 	p.render_bg()
+}
+
+pub fn (p &Ppu) pixel_buffer() []u8 {
+	return []u8{len: 153600, init: p.buffer[index]}
 }

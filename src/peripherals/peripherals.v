@@ -10,7 +10,16 @@ pub struct Peripherals {
 mut:
 	ewram ewram.EWram
 	iwram iwram.IWram
-	ppu   ppu.Ppu
+pub mut:
+	ppu ppu.Ppu
+}
+
+pub fn Peripherals.new() Peripherals {
+	return Peripherals{
+		ewram: EWram.new()
+		iwram: IWram.new()
+		ppu: Ppu.new()
+	}
 }
 
 pub fn (p &Peripherals) read(addr u32) u32 {
