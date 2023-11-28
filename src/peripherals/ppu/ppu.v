@@ -42,6 +42,7 @@ mut:
 	palette  [0x200]u16
 	vram     [0xC000]u16
 	oam      [0x100]u32
+	buffer   [153600]u8
 }
 
 pub fn (p &Ppu) read(addr u32) u32 {

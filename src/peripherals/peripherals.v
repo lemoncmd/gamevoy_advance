@@ -53,6 +53,7 @@ pub fn (p &Peripherals) cycle(addr u32, size u32, is_sequencial bool) u8 {
 				3
 			}
 		}
+		// TODO if ppu uses vrams cycle + 1
 		0x05, 0x06 {
 			if size > 0xFFFF {
 				2
