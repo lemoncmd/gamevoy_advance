@@ -2,6 +2,7 @@ module ppu
 
 pub struct Ppu {
 mut:
+	cycle    u16
 	dispcnt  u16
 	dispstat u16
 	vcount   u16
@@ -43,6 +44,8 @@ mut:
 	vram     [0xC000]u16
 	oam      [0x100]u32
 	buffer   [153600]u8
+pub mut:
+	vram_in_access bool
 }
 
 pub fn (p &Ppu) read(addr u32) u32 {
@@ -299,4 +302,60 @@ fn (mut p Ppu) write_16(addr u32, val u16, size u16) {
 		}
 		else {}
 	}
+}
+
+fn (mut p Ppu) check_lyc_eq_ly() {
+	lyc := p.dispstat >> 8
+	ly := p.vcount & 0xFF
+	mut dispstat := DispStat.from(p.dispstat)
+	if lyc == ly {
+		dispstat.set(.vcounter)
+		if dispstat.has(.vcounter_int_enable) {
+			// int
+		}
+	} else {
+		dispstat.clear(.vcounter)
+	}
+	p.dispstat = u16(dispstat)
+}
+
+pub fn (mut p Ppu) emulate_cycle() {
+	mut dispstat := DispStat.from(p.dispstat)
+	p.cycle++
+	match p.cycle {
+		960 {
+			// hblank
+			p.render()
+			dispstat.set(.hblank)
+			if dispstat.has(.hblank_int_enable) {
+				// int
+			}
+		}
+		1232 {
+			p.cycle = 0
+			p.vcount++
+			match p.vcount {
+				0...159 {
+					dispstat.clear(.hblank)
+				}
+				160 {
+					// vblank
+					dispstat.set(.vblank)
+					if dispstat.has(.vblank_int_enable) {
+						// int
+					}
+				}
+				228 {
+					p.vcount = 0
+					dispstat.clear(.vblank)
+				}
+				else {}
+			}
+		}
+		else {}
+	}
+}
+
+fn (mut p Ppu) render() {
+	p.render_bg()
 }
