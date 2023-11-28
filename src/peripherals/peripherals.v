@@ -14,8 +14,9 @@ pub mut:
 	ppu ppu.Ppu
 }
 
-pub fn Peripherals.new() Peripherals {
+pub fn Peripherals.new(b Bios) Peripherals {
 	return Peripherals{
+		bios: b
 		ewram: EWram.new()
 		iwram: IWram.new()
 		ppu: Ppu.new()

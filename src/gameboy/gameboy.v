@@ -3,6 +3,7 @@ module gameboy
 import gg { Context }
 import cpu { Cpu }
 import peripherals { Peripherals }
+import peripherals.bios { Bios }
 
 pub struct Gameboy {
 mut:
@@ -12,10 +13,10 @@ mut:
 	image_idx   int
 }
 
-pub fn Gameboy.new() Gameboy {
-	mut ret := Gameboy{
+pub fn Gameboy.new(b Bios) &Gameboy {
+	mut ret := &Gameboy{
 		cpu: Cpu.new()
-		peripherals: Peripherals.new()
+		peripherals: Peripherals.new(b)
 	}
 	ret.init_gg()
 	return ret

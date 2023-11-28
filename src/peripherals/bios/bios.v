@@ -4,11 +4,11 @@ pub struct Bios {
 	rom [0x1000]u32
 }
 
-pub fn Bios.new(rom []u32) Bios {
-	assert rom.len == 0x1000
-	return Bios{
-		rom: [0x1000]u32{init: rom[index]}
-	}
+pub fn Bios.new(rom []u8) Bios {
+	assert rom.len == 0x4000
+	ret := Bios{}
+	unsafe { vmemcpy(&ret.rom[0], &rom[0], sizeof(ret.rom)) }
+	return ret
 }
 
 pub fn (b &Bios) read(addr u32) u32 {
