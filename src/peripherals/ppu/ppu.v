@@ -287,11 +287,11 @@ fn (mut p Ppu) write_16(addr u32, val u16, size u16) {
 				addr & 0x1FFFF
 			}
 			if size == 0xFFFF {
-				p.vram[base_addr] = u16(val)
+				p.vram[base_addr >> 1] = u16(val)
 			} else {
 				// TODO 0x14000 in Bitmap mode
 				if base_addr < 0x10000 {
-					p.vram[base_addr] = u16(val) | u16(val << 8)
+					p.vram[base_addr >> 1] = u16(val) | u16(val << 8)
 				}
 			}
 		}

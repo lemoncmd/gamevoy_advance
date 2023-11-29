@@ -24,10 +24,13 @@ pub fn Peripherals.new(b Bios) Peripherals {
 }
 
 pub fn (p &Peripherals) read(addr u32) u32 {
-	println('read: ${addr:08x}')
+	// println('read: ${addr:08x}')
 	return match addr {
 		0x0000_0000...0x0000_3FFF {
 			p.bios.read(addr)
+		}
+		0x0400_0000...0x0400_005F {
+			p.ppu.read(addr)
 		}
 		/*
 		0x0400_0000...0x0400_03FE { io }
@@ -40,19 +43,26 @@ pub fn (p &Peripherals) read(addr u32) u32 {
 				0x03 { p.iwram.read(addr) }
 				0x05...0x07 { p.ppu.read(addr) }
 				// must be prefetched code
-				else { 0 }
+				else { panic('unexpected address for peripherals: ${addr:08x}') }
 			}
 		}
 	}
 }
 
 pub fn (mut p Peripherals) write(addr u32, val u32, size u32) {
-	println('write: ${addr:08x} ${val:08x}')
-	match addr >> 24 {
-		0x02 { p.ewram.write(addr, val, size) }
-		0x03 { p.iwram.write(addr, val, size) }
-		0x05...0x07 { p.ppu.write(addr, val, size) }
-		else {}
+	// println('write: ${addr:08x} ${val:08x}')
+	match addr {
+		0x0400_0000...0x0400_005F {
+			p.ppu.write(addr, val, size)
+		}
+		else {
+			match addr >> 24 {
+				0x02 { p.ewram.write(addr, val, size) }
+				0x03 { p.iwram.write(addr, val, size) }
+				0x05...0x07 { p.ppu.write(addr, val, size) }
+				else { panic('unexpected address for peripherals: ${addr:08x}') }
+			}
+		}
 	}
 }
 

@@ -312,7 +312,9 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 					}
 					7 {
 						// ldrsh
-						panic('unimplemented instruction: ${opcode:08x}')
+						c.ldrsh(bus, opcode.cond(), opcode.bit(24), opcode.bit(23), opcode.bit(21),
+							opcode.rn(), opcode.rd(), c.unusual_ldstr_offset(opcode))
+						return
 					}
 					else {}
 				}

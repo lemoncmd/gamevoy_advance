@@ -589,6 +589,49 @@ fn (mut c Cpu) ldrh(bus &Peripherals, cond u8, is_pre bool, is_plus bool, flag b
 	}
 }
 
+fn (mut c Cpu) ldrsh(bus &Peripherals, cond u8, is_pre bool, is_plus bool, flag bool, rn u8, rd u8, offset u32) {
+	c.check_cond(bus, cond) or { return }
+	match c.ctx.step {
+		0 {
+			c.ctx.addr = if is_plus {
+				c.regs.read(rn) + offset
+			} else {
+				c.regs.read(rn) - offset
+			}
+			if is_pre && flag {
+				c.regs.write(rn, c.ctx.addr)
+			}
+			c.regs.r15 += 4
+			c.ctx.step = 1
+		}
+		1 {
+			size := u32(0xFFFF)
+			val := u32(i32(c.read(bus, c.ctx.addr, size) or { return } << 16) >> 16)
+			c.regs.write(rd, val)
+			if !is_pre {
+				c.regs.write(rn, c.ctx.addr)
+			}
+			c.ctx.step = if rd == 0xF { 2 } else { 4 }
+		}
+		2 {
+			val := c.read(bus, c.regs.r15, 0xFFFF_FFFF) or { return }
+			c.ctx.opcodes[1] = val
+			c.ctx.step = 3
+		}
+		3 {
+			val := c.read(bus, c.regs.r15 + 4, 0xFFFF_FFFF) or { return }
+			c.ctx.opcodes[2] = val
+			c.regs.r15 += 8
+			c.ctx.step = 4
+		}
+		4 {
+			c.fetch(bus) or { return }
+			c.ctx.step = 0
+		}
+		else {}
+	}
+}
+
 fn (mut c Cpu) ldr(bus &Peripherals, cond u8, is_pre bool, is_plus bool, is_8bit bool, flag bool, rn u8, rd u8, offset u32) {
 	c.check_cond(bus, cond) or { return }
 	match c.ctx.step {
