@@ -80,6 +80,33 @@ fn (mut c Cpu) msr_spsr(bus &Peripherals, cond u8, write_f bool, write_c bool, r
 	}
 }
 
+fn (mut c Cpu) bx(bus &Peripherals, cond u8, rn u8) {
+	c.check_cond(bus, cond) or { return }
+	rn_val := c.regs.read(rn)
+	base_pc := rn_val & 0xFFFF_FFFE
+	is_thumb := rn_val & 1 > 0
+	size := u32(if is_thumb { 0xFFFF } else { 0xFFFF_FFFF })
+	match c.ctx.step {
+		0 {
+			val := c.read(bus, base_pc, size) or { return }
+			c.ctx.opcodes[1] = val & size
+			c.ctx.step = 1
+		}
+		1 {
+			val := c.read(bus, base_pc + u32(if is_thumb { 2 } else { 4 }), size) or { return }
+			c.ctx.opcodes[2] = val & size
+			c.regs.r15 = base_pc + u32(if is_thumb { 4 } else { 8 })
+			c.regs.cpsr.set_flag(.t, is_thumb)
+			c.ctx.step = 2
+		}
+		2 {
+			c.fetch(bus) or { return }
+			c.ctx.step = 0
+		}
+		else {}
+	}
+}
+
 fn (mut c Cpu) add(bus &Peripherals, cond u8, s bool, rn u8, rd u8, op2 u32, is_rs bool) {
 	c.check_cond(bus, cond) or { return }
 	for {
@@ -194,10 +221,9 @@ fn (mut c Cpu) ldr(bus &Peripherals, cond u8, is_pre bool, is_plus bool, is_8bit
 			c.ctx.step = 1
 		}
 		1 {
-			c.ctx.val = c.read(bus, c.ctx.addr, if is_8bit { u32(0xFF) } else { 0xFFFF_FFFF }) or {
-				return
-			}
-			c.regs.write(rd, c.ctx.val)
+			size := if is_8bit { u32(0xFF) } else { 0xFFFF_FFFF }
+			val := c.read(bus, c.ctx.addr, size) or { return } & size
+			c.regs.write(rd, val)
 			if !is_pre {
 				c.regs.write(rn, c.ctx.addr)
 			}
@@ -240,9 +266,8 @@ fn (mut c Cpu) str_(mut bus Peripherals, cond u8, is_pre bool, is_plus bool, is_
 				c.ctx.step = 1
 			}
 			1 {
-				c.write(mut bus, c.ctx.addr, c.ctx.val, if is_8bit { u32(0xFF) } else { 0xFFFF_FFFF }) or {
-					return
-				}
+				size := if is_8bit { u32(0xFF) } else { 0xFFFF_FFFF }
+				c.write(mut bus, c.ctx.addr, size & c.ctx.val, size) or { return }
 				if !is_pre {
 					c.regs.write(rn, c.ctx.addr)
 				}

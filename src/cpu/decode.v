@@ -20,6 +20,7 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 			// msr cpsr
 			c.msr_cpsr(bus, opcode.cond(), opcode.bit(19), opcode.bit(16), opcode.rd(),
 				c.msr_value(opcode))
+			return
 		}
 		0b00010_10_0_0000 {
 			// mrs spsr
@@ -29,6 +30,7 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 			// msr spsr
 			c.msr_spsr(bus, opcode.cond(), opcode.bit(19), opcode.bit(16), opcode.rd(),
 				c.msr_value(opcode))
+			return
 		}
 		// swap
 		0b00010_0_00_1001 {
@@ -67,7 +69,8 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 		// bx
 		0b0001_0010_0001 {
 			// bx
-			panic('unimplemented instruction: ${opcode:08x}')
+			c.bx(bus, opcode.cond(), opcode.rm())
+			return
 		}
 		// alu
 		0b00_0_0000_0_0000...0b00_0_0000_1_1111, 0b00_1_0000_0_0000...0b00_1_0000_1_1111 {
@@ -90,6 +93,7 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 			// add
 			op2, is_rs, _ := c.calc_alu_op2(opcode)
 			c.add(bus, opcode.cond(), opcode.bit(20), opcode.rn(), opcode.rd(), op2, is_rs)
+			return
 		}
 		0b00_0_0101_0_0000...0b00_0_0101_1_1111, 0b00_1_0101_0_0000...0b00_1_0101_1_1111 {
 			// adc
@@ -127,6 +131,7 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 			// mov
 			op2, is_rs, carry := c.calc_alu_op2(opcode)
 			c.mov(bus, opcode.cond(), opcode.bit(20), opcode.rd(), op2, is_rs, carry)
+			return
 		}
 		0b00_0_1110_0_0000...0b00_0_1110_1_1111, 0b00_1_1110_0_0000...0b00_1_1110_1_1111 {
 			// bic
@@ -139,14 +144,16 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 		// data transfer
 		0b01_0_0_0000_0000...0b01_1_1_1111_1111 {
 			// single data transfer
-			if opcode.bit(20) {
-				// ldr
-				c.ldr(bus, opcode.cond(), opcode.bit(24), opcode.bit(23), opcode.bit(22),
-					opcode.bit(21), opcode.rn(), opcode.rd(), c.ldstr_offset(opcode))
-			} else {
+			if !opcode.bit(20) {
 				// str
 				c.str_(mut bus, opcode.cond(), opcode.bit(24), opcode.bit(23), opcode.bit(22),
 					opcode.bit(21), opcode.rn(), opcode.rd(), c.ldstr_offset(opcode))
+				return
+			} else if !opcode.bit(25) || !opcode.bit(4) {
+				// ldr
+				c.ldr(bus, opcode.cond(), opcode.bit(24), opcode.bit(23), opcode.bit(22),
+					opcode.bit(21), opcode.rn(), opcode.rd(), c.ldstr_offset(opcode))
+				return
 			}
 		}
 		0b100_0_0000_0000...0b100_1_1111_1111 {
@@ -155,6 +162,7 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 				// ldm
 				c.ldm(bus, opcode.cond(), opcode.bit(24), opcode.bit(23), opcode.bit(22),
 					opcode.bit(21), opcode.rn(), u16(opcode))
+				return
 			} else {
 				// stm
 				panic('unimplemented instruction: ${opcode:08x}')
@@ -164,10 +172,12 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 		0b101_0_0000_0000...0b101_0_1111_1111 {
 			// b
 			c.b(bus, opcode.cond(), u32(i32(u32(opcode) << 8) >> 6))
+			return
 		}
 		0b101_1_0000_0000...0b101_1_1111_1111 {
 			// bl
 			c.bl(bus, opcode.cond(), u32(i32(u32(opcode) << 8) >> 6))
+			return
 		}
 		0b1111_0000_0000...0b1111_1111_1111 {
 			// swx

@@ -29,7 +29,7 @@ pub fn (mut c Cpu) init(bus &Peripherals) {
 }
 
 pub fn (mut c Cpu) emulate_cycle(mut bus Peripherals) {
-	// println('${c.regs.r15:08x} ${c.regs.read(1):08x}')
-	// println('${c.ctx.opcodes[0]:08x}, ${c.ctx.opcodes[1]:08x}, ${c.ctx.opcodes[2]:08x}')
+	println('${c.regs.r15:08x} ${c.regs.read(1):08x}')
+	println('${c.ctx.opcodes[0]:08x}, ${c.ctx.opcodes[1]:08x}, ${c.ctx.opcodes[2]:08x}')
 	c.decode(mut bus)
 }
