@@ -107,6 +107,55 @@ fn (mut c Cpu) bx(bus &Peripherals, cond u8, rn u8) {
 	}
 }
 
+fn (mut c Cpu) and(bus &Peripherals, cond u8, s bool, rn u8, rd u8, op2 u32, is_rs bool, carry ?bool) {
+	c.check_cond(bus, cond) or { return }
+	for {
+		match c.ctx.step {
+			0 {
+				c.regs.r15 += 4
+				result := c.regs.read(rn) & op2
+				c.regs.write(rd, result)
+				if s {
+					if rd == 0xF {
+						c.regs.cpsr = c.regs.read_spsr()
+					} else {
+						if ca := carry {
+							c.regs.cpsr.set_flag(.c, ca)
+						}
+						c.regs.cpsr.set_flag(.z, result == 0)
+						c.regs.cpsr.set_flag(.n, result >> 31 > 0)
+					}
+				}
+				c.ctx.step = if rd == 0xF { 1 } else { 3 }
+				if is_rs {
+					return
+				}
+			}
+			1 {
+				val := c.read(bus, c.regs.r15, 0xFFFF_FFFF) or { return }
+				c.ctx.opcodes[1] = val
+				c.ctx.step = 2
+				return
+			}
+			2 {
+				val := c.read(bus, c.regs.r15 + 4, 0xFFFF_FFFF) or { return }
+				c.ctx.opcodes[2] = val
+				c.regs.r15 += 8
+				c.ctx.step = 3
+				return
+			}
+			3 {
+				c.fetch(bus) or { return }
+				c.ctx.step = 0
+				return
+			}
+			else {
+				return
+			}
+		}
+	}
+}
+
 fn (mut c Cpu) sub(bus &Peripherals, cond u8, s bool, rn u8, rd u8, op2 u32, is_rs bool) {
 	c.check_cond(bus, cond) or { return }
 	for {
@@ -267,6 +316,35 @@ fn (mut c Cpu) tst(bus &Peripherals, cond u8, rn u8, op2 u32, is_rs bool, carry 
 				if ca := carry {
 					c.regs.cpsr.set_flag(.c, ca)
 				}
+				c.regs.cpsr.set_flag(.z, result == 0)
+				c.regs.cpsr.set_flag(.n, result >> 31 > 0)
+				c.ctx.step = 1
+				if is_rs {
+					return
+				}
+			}
+			1 {
+				c.fetch(bus) or { return }
+				c.ctx.step = 0
+				return
+			}
+			else {
+				return
+			}
+		}
+	}
+}
+
+fn (mut c Cpu) cmp(bus &Peripherals, cond u8, rn u8, op2 u32, is_rs bool) {
+	c.check_cond(bus, cond) or { return }
+	for {
+		match c.ctx.step {
+			0 {
+				c.regs.r15 += 4
+				rn_val := c.regs.read(rn)
+				result, carry := bits.sub_32(rn_val, op2, 0)
+				c.regs.cpsr.set_flag(.v, (rn_val ^ op2) >> 31 != 0 && (rn_val ^ result) >> 31 > 0)
+				c.regs.cpsr.set_flag(.c, carry > 0)
 				c.regs.cpsr.set_flag(.z, result == 0)
 				c.regs.cpsr.set_flag(.n, result >> 31 > 0)
 				c.ctx.step = 1

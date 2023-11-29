@@ -80,7 +80,10 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 					goto unusual_word
 				}
 			}
-			panic('unimplemented instruction: ${opcode:08x}')
+			op2, is_rs, carry := c.calc_alu_op2(opcode)
+			c.and(bus, opcode.cond(), opcode.bit(20), opcode.rn(), opcode.rd(), op2, is_rs,
+				carry)
+			return
 		}
 		0b00_0_0001_0_0000...0b00_0_0001_1_1111, 0b00_1_0001_0_0000...0b00_1_0001_1_1111 {
 			// eor
@@ -178,7 +181,9 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 					goto unusual_word
 				}
 			}
-			panic('unimplemented instruction: ${opcode:08x}')
+			op2, is_rs, _ := c.calc_alu_op2(opcode)
+			c.cmp(bus, opcode.cond(), opcode.rn(), op2, is_rs)
+			return
 		}
 		0b00_0_1011_1_0000...0b00_0_1011_1_1111, 0b00_1_1011_1_0000...0b00_1_1011_1_1111 {
 			// cmn
