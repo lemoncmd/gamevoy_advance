@@ -24,6 +24,7 @@ pub fn Peripherals.new(b Bios) Peripherals {
 }
 
 pub fn (p &Peripherals) read(addr u32) u32 {
+	println('read: ${addr:08x}')
 	return match addr {
 		0x0000_0000...0x0000_3FFF {
 			p.bios.read(addr)
@@ -46,6 +47,7 @@ pub fn (p &Peripherals) read(addr u32) u32 {
 }
 
 pub fn (mut p Peripherals) write(addr u32, val u32, size u32) {
+	println('write: ${addr:08x} ${val:08x}')
 	match addr >> 24 {
 		0x02 { p.ewram.write(addr, val, size) }
 		0x03 { p.iwram.write(addr, val, size) }

@@ -260,13 +260,24 @@ pub fn (mut r Register) write(addr u8, val u32) {
 	}
 }
 
-pub fn (r &Register) get_spsr() Psr {
+pub fn (r &Register) read_spsr() Psr {
 	return match r.cpsr.get_mode() {
-		.user, .fiq { r.spsr_fiq }
+		.fiq { r.spsr_fiq }
 		.supervisor { r.spsr_svc }
 		.abort { r.spsr_abt }
 		.irq { r.spsr_irq }
 		.undefined { r.spsr_und }
-		else { panic('cannot get spsr in system mode') }
+		else { panic('cannot get spsr in user or system mode') }
+	}
+}
+
+pub fn (mut r Register) write_spsr(val u32) {
+	match r.cpsr.get_mode() {
+		.fiq { r.spsr_fiq = val }
+		.supervisor { r.spsr_svc = val }
+		.abort { r.spsr_abt = val }
+		.irq { r.spsr_irq = val }
+		.undefined { r.spsr_und = val }
+		else { panic('cannot get spsr in user or system mode') }
 	}
 }

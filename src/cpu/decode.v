@@ -27,7 +27,8 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 		}
 		0b00010_11_0_0000, 0b00110_11_0_0000...0b00110_11_0_1111 {
 			// msr spsr
-			panic('unimplemented instruction: ${opcode:08x}')
+			c.msr_spsr(bus, opcode.cond(), opcode.bit(19), opcode.bit(16), opcode.rd(),
+				c.msr_value(opcode))
 		}
 		// swap
 		0b00010_0_00_1001 {
@@ -87,7 +88,8 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 		}
 		0b00_0_0100_0_0000...0b00_0_0100_1_1111, 0b00_1_0100_0_0000...0b00_1_0100_1_1111 {
 			// add
-			panic('unimplemented instruction: ${opcode:08x}')
+			op2, is_rs, _ := c.calc_alu_op2(opcode)
+			c.add(bus, opcode.cond(), opcode.bit(20), opcode.rn(), opcode.rd(), op2, is_rs)
 		}
 		0b00_0_0101_0_0000...0b00_0_0101_1_1111, 0b00_1_0101_0_0000...0b00_1_0101_1_1111 {
 			// adc
@@ -139,7 +141,8 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 			// single data transfer
 			if opcode.bit(20) {
 				// ldr
-				panic('unimplemented instruction: ${opcode:08x}')
+				c.ldr(bus, opcode.cond(), opcode.bit(24), opcode.bit(23), opcode.bit(22),
+					opcode.bit(21), opcode.rn(), opcode.rd(), c.ldstr_offset(opcode))
 			} else {
 				// str
 				c.str_(mut bus, opcode.cond(), opcode.bit(24), opcode.bit(23), opcode.bit(22),

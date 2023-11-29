@@ -71,7 +71,7 @@ fn (c &Cpu) calc_alu_op2(opcode Opcode) (u32, bool, ?bool) {
 }
 
 fn (c &Cpu) ldstr_offset(opcode Opcode) u32 {
-	if opcode.bit(25) {
+	if !opcode.bit(25) {
 		// imm
 		return u32(opcode) & 0xFFF
 	} else {
