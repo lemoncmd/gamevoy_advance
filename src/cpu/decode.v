@@ -16,24 +16,17 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 			// mrs cpsr
 			panic('unimplemented instruction: ${opcode:08x}')
 		}
-		0b00010_01_0_0000 {
-			// msr cpsr register
-			panic('unimplemented instruction: ${opcode:08x}')
+		0b00010_01_0_0000, 0b00110_01_0_0000...0b00110_01_0_1111 {
+			// msr cpsr
+			c.msr_cpsr(bus, opcode.cond(), opcode.bit(19), opcode.bit(16), opcode.rd(),
+				c.msr_value(opcode))
 		}
 		0b00010_10_0_0000 {
 			// mrs spsr
 			panic('unimplemented instruction: ${opcode:08x}')
 		}
-		0b00010_11_0_0000 {
-			// msr spsr register
-			panic('unimplemented instruction: ${opcode:08x}')
-		}
-		0b00110_01_0_0000...0b00110_01_0_1111 {
-			// msr cpsr imm
-			panic('unimplemented instruction: ${opcode:08x}')
-		}
-		0b00110_11_0_0000...0b00110_11_0_1111 {
-			// msr spsr imm
+		0b00010_11_0_0000, 0b00110_11_0_0000...0b00110_11_0_1111 {
+			// msr spsr
 			panic('unimplemented instruction: ${opcode:08x}')
 		}
 		// swap
@@ -131,7 +124,7 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 		0b00_0_1101_0_0000...0b00_0_1101_1_1111, 0b00_1_1101_0_0000...0b00_1_1101_1_1111 {
 			// mov
 			op2, is_rs, carry := c.calc_alu_op2(opcode)
-			c.mov(bus, opcode.cond(), opcode >> 20 > 0, opcode.rd(), op2, is_rs, carry)
+			c.mov(bus, opcode.cond(), opcode.bit(20), opcode.rd(), op2, is_rs, carry)
 		}
 		0b00_0_1110_0_0000...0b00_0_1110_1_1111, 0b00_1_1110_0_0000...0b00_1_1110_1_1111 {
 			// bic
@@ -142,9 +135,16 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 			panic('unimplemented instruction: ${opcode:08x}')
 		}
 		// data transfer
-		0b010_0_0000_0000...0b010_1_1111_1111 {
+		0b01_0_0_0000_0000...0b01_1_1_1111_1111 {
 			// single data transfer
-			panic('unimplemented instruction: ${opcode:08x}')
+			if opcode.bit(20) {
+				// ldr
+				panic('unimplemented instruction: ${opcode:08x}')
+			} else {
+				// str
+				c.str_(mut bus, opcode.cond(), opcode.bit(24), opcode.bit(23), opcode.bit(22),
+					opcode.bit(21), opcode.rn(), opcode.rd(), c.ldstr_offset(opcode))
+			}
 		}
 		0b100_0_0000_0000...0b100_1_1111_1111 {
 			// block data transfer

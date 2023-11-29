@@ -9,6 +9,8 @@ mut:
 	waitstates u8
 	bus_value  u32
 	step       int
+	addr       u32
+	val        u32
 }
 
 pub struct Cpu {

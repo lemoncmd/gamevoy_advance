@@ -86,6 +86,10 @@ pub fn (p Psr) get_flag(f Flag) bool {
 	return u32(p) & u32(f) > 0
 }
 
+pub fn (p Psr) is_priviledge() bool {
+	return p.get_mode() != .user
+}
+
 pub fn (r &Register) read(addr u8) u32 {
 	return match addr {
 		0 {

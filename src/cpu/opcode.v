@@ -26,6 +26,10 @@ fn (o Opcode) rm() u8 {
 	return u8(o) & 0xF
 }
 
+fn (o Opcode) bit(number u8) bool {
+	return (o >> number) & 1 > 0
+}
+
 type ThumbOpcode = u16
 
 fn (o ThumbOpcode) base_opcode() u8 {
