@@ -151,7 +151,14 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 		}
 		0b100_0_0000_0000...0b100_1_1111_1111 {
 			// block data transfer
-			panic('unimplemented instruction: ${opcode:08x}')
+			if opcode.bit(20) {
+				// ldm
+				c.ldm(bus, opcode.cond(), opcode.bit(24), opcode.bit(23), opcode.bit(22),
+					opcode.bit(21), opcode.rn(), u16(opcode))
+			} else {
+				// stm
+				panic('unimplemented instruction: ${opcode:08x}')
+			}
 		}
 		// branch
 		0b101_0_0000_0000...0b101_0_1111_1111 {

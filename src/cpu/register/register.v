@@ -260,6 +260,50 @@ pub fn (mut r Register) write(addr u8, val u32) {
 	}
 }
 
+pub fn (r &Register) read_user_register(addr u8) u32 {
+	return match addr {
+		0 { r.r0 }
+		1 { r.r1 }
+		2 { r.r2 }
+		3 { r.r3 }
+		4 { r.r4 }
+		5 { r.r5 }
+		6 { r.r6 }
+		7 { r.r7 }
+		8 { r.r8 }
+		9 { r.r9 }
+		10 { r.r10 }
+		11 { r.r11 }
+		12 { r.r12 }
+		13 { r.r13 }
+		14 { r.r14 }
+		15 { r.r15 }
+		else { panic('unexpected address for register: 0x${addr:02X}') }
+	}
+}
+
+pub fn (mut r Register) write_user_register(addr u8, val u32) {
+	match addr {
+		0 { r.r0 = val }
+		1 { r.r1 = val }
+		2 { r.r2 = val }
+		3 { r.r3 = val }
+		4 { r.r4 = val }
+		5 { r.r5 = val }
+		6 { r.r6 = val }
+		7 { r.r7 = val }
+		8 { r.r8 = val }
+		9 { r.r9 = val }
+		10 { r.r10 = val }
+		11 { r.r11 = val }
+		12 { r.r12 = val }
+		13 { r.r13 = val }
+		14 { r.r14 = val }
+		15 { r.r15 = val }
+		else { panic('unexpected address for register: 0x${addr:02X}') }
+	}
+}
+
 pub fn (r &Register) read_spsr() Psr {
 	return match r.cpsr.get_mode() {
 		.fiq { r.spsr_fiq }
