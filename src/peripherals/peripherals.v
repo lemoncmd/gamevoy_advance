@@ -4,6 +4,7 @@ import peripherals.bios { Bios }
 import peripherals.ewram { EWram }
 import peripherals.iwram { IWram }
 import peripherals.ppu { Ppu }
+import cpu.interrupts { Interrupts }
 
 pub struct Peripherals {
 	bios bios.Bios
@@ -23,7 +24,7 @@ pub fn Peripherals.new(b Bios) Peripherals {
 	}
 }
 
-pub fn (p &Peripherals) read(addr u32) u32 {
+pub fn (p &Peripherals) read(addr u32, ints &Interrupts) u32 {
 	// println('read: ${addr:08x}')
 	return match addr {
 		0x0000_0000...0x0000_3FFF {
@@ -39,8 +40,11 @@ pub fn (p &Peripherals) read(addr u32) u32 {
 		0x0400_0060...0x0400_00AB {
 			0
 		}
+		0x0400_0200...0x0400_020B {
+			ints.read(addr)
+		}
 		/*
-		0x0400_0000...0x0400_03FE { io }
+		0x0400_0000...0x0400_03FF { io }
 		0x0800_0000...0x0FFF_FFFF { p.cartridge.read(addr) }
 		*/
 		else {
@@ -56,13 +60,25 @@ pub fn (p &Peripherals) read(addr u32) u32 {
 	}
 }
 
-pub fn (mut p Peripherals) write(addr u32, val u32, size u32) {
+pub fn (mut p Peripherals) write(addr u32, val u32, size u32, mut ints Interrupts) {
 	// println('write: ${addr:08x} ${val:08x}')
 	match addr {
 		0x0400_0000...0x0400_005F {
 			p.ppu.write(addr, val, size)
 		}
-		0x0400_0060...0x0400_03FE {
+		0x0400_0060...0x0400_01FF {
+			println('unsupported write: ${addr:08x}')
+		}
+		0x0400_0200...0x0400_020B {
+			ints.write(addr, val, size)
+		}
+		0x0400_020C...0x0400_02FF {
+			println('unsupported write: ${addr:08x}')
+		}
+		0x0400_0300...0x0400_0303 {
+			ints.write(addr, val, size)
+		}
+		0x0400_0304...0x0400_03FF {
 			println('unsupported write: ${addr:08x}')
 		}
 		// ???

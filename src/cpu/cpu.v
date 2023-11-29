@@ -28,7 +28,8 @@ pub fn Cpu.new() Cpu {
 }
 
 pub fn (mut c Cpu) init(bus &Peripherals) {
-	c.ctx.opcodes = [bus.read(0), bus.read(4), bus.read(8)]!
+	c.ctx.opcodes = [bus.read(0, c.interrupts), bus.read(4, c.interrupts),
+		bus.read(8, c.interrupts)]!
 	c.regs.r15 = 8
 }
 

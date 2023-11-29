@@ -31,6 +31,7 @@ pub mut:
 	int_flags  InterruptFlag
 	int_enable InterruptFlag
 	ime        bool
+	halt       bool
 }
 
 pub fn (mut i Interrupts) irq(f InterruptFlag) {
@@ -59,7 +60,7 @@ pub fn (mut i Interrupts) write(addr u32, val u32, size u32) {
 	}
 }
 
-pub fn (mut i Interrupts) write_16(addr u32, val u32, size u32) {
+pub fn (mut i Interrupts) write_16(addr u32, val u16, size u32) {
 	shift := (addr & 1) << 3
 	match addr & 0xFFFF_FFFE {
 		0x0400_0200 {
@@ -67,12 +68,16 @@ pub fn (mut i Interrupts) write_16(addr u32, val u32, size u32) {
 			i.int_enable = i.int_enable | unsafe { InterruptFlag(u16(val << shift)) }
 		}
 		0x0400_0202 {
-			i.int_flags = i.int_flags & unsafe { InterruptFlag(u16(~(size << shift))) }
-			i.int_flags = i.int_flags | unsafe { InterruptFlag(u16(val << shift)) }
+			i.int_flags = i.int_flags & unsafe { InterruptFlag(~(val << shift)) }
 		}
 		0x0400_0208 {
 			if shift == 0 {
 				i.ime = val & 1 > 0
+			}
+		}
+		0x0400_0300 {
+			if shift == 8 {
+				i.halt = true
 			}
 		}
 		else {}

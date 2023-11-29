@@ -510,15 +510,15 @@ fn (mut c Cpu) bic(bus &Peripherals, cond u8, s bool, rn u8, rd u8, op2 u32, is_
 	}
 }
 
-fn (mut c Cpu) strh(mut bus Peripherals, cond u8, is_pre bool, is_plus bool, flag bool, rn u8, rd u8, offset u32) {
+fn (mut c Cpu) strh(mut bus Peripherals, cond u8, is_pre bool, is_plus bool, flag bool, rn u8, rd u8, offset_ u32) {
 	c.check_cond(bus, cond) or { return }
+	offset := if is_plus { offset_ } else { -offset_ }
 	for {
 		match c.ctx.step {
 			0 {
-				c.ctx.addr = if is_plus {
-					c.regs.read(rn) + offset
-				} else {
-					c.regs.read(rn) - offset
+				c.ctx.addr = c.regs.read(rn)
+				if is_pre {
+					c.ctx.addr += offset
 				}
 				if is_pre && flag {
 					c.regs.write(rn, c.ctx.addr)
@@ -531,6 +531,7 @@ fn (mut c Cpu) strh(mut bus Peripherals, cond u8, is_pre bool, is_plus bool, fla
 				size := u32(0xFFFF)
 				c.write(mut bus, c.ctx.addr, size & c.ctx.val, size) or { return }
 				if !is_pre {
+					c.ctx.addr += offset
 					c.regs.write(rn, c.ctx.addr)
 				}
 				c.ctx.step = 2
@@ -546,14 +547,14 @@ fn (mut c Cpu) strh(mut bus Peripherals, cond u8, is_pre bool, is_plus bool, fla
 	}
 }
 
-fn (mut c Cpu) ldrh(bus &Peripherals, cond u8, is_pre bool, is_plus bool, flag bool, rn u8, rd u8, offset u32) {
+fn (mut c Cpu) ldrh(bus &Peripherals, cond u8, is_pre bool, is_plus bool, flag bool, rn u8, rd u8, offset_ u32) {
 	c.check_cond(bus, cond) or { return }
+	offset := if is_plus { offset_ } else { -offset_ }
 	match c.ctx.step {
 		0 {
-			c.ctx.addr = if is_plus {
-				c.regs.read(rn) + offset
-			} else {
-				c.regs.read(rn) - offset
+			c.ctx.addr = c.regs.read(rn)
+			if is_pre {
+				c.ctx.addr += offset
 			}
 			if is_pre && flag {
 				c.regs.write(rn, c.ctx.addr)
@@ -566,6 +567,7 @@ fn (mut c Cpu) ldrh(bus &Peripherals, cond u8, is_pre bool, is_plus bool, flag b
 			val := c.read(bus, c.ctx.addr, size) or { return } & size
 			c.regs.write(rd, val)
 			if !is_pre {
+				c.ctx.addr += offset
 				c.regs.write(rn, c.ctx.addr)
 			}
 			c.ctx.step = if rd == 0xF { 2 } else { 4 }
@@ -589,14 +591,14 @@ fn (mut c Cpu) ldrh(bus &Peripherals, cond u8, is_pre bool, is_plus bool, flag b
 	}
 }
 
-fn (mut c Cpu) ldrsh(bus &Peripherals, cond u8, is_pre bool, is_plus bool, flag bool, rn u8, rd u8, offset u32) {
+fn (mut c Cpu) ldrsh(bus &Peripherals, cond u8, is_pre bool, is_plus bool, flag bool, rn u8, rd u8, offset_ u32) {
 	c.check_cond(bus, cond) or { return }
+	offset := if is_plus { offset_ } else { -offset_ }
 	match c.ctx.step {
 		0 {
-			c.ctx.addr = if is_plus {
-				c.regs.read(rn) + offset
-			} else {
-				c.regs.read(rn) - offset
+			c.ctx.addr = c.regs.read(rn)
+			if is_pre {
+				c.ctx.addr += offset
 			}
 			if is_pre && flag {
 				c.regs.write(rn, c.ctx.addr)
@@ -609,6 +611,7 @@ fn (mut c Cpu) ldrsh(bus &Peripherals, cond u8, is_pre bool, is_plus bool, flag 
 			val := u32(i32(c.read(bus, c.ctx.addr, size) or { return } << 16) >> 16)
 			c.regs.write(rd, val)
 			if !is_pre {
+				c.ctx.addr += offset
 				c.regs.write(rn, c.ctx.addr)
 			}
 			c.ctx.step = if rd == 0xF { 2 } else { 4 }
@@ -632,14 +635,14 @@ fn (mut c Cpu) ldrsh(bus &Peripherals, cond u8, is_pre bool, is_plus bool, flag 
 	}
 }
 
-fn (mut c Cpu) ldr(bus &Peripherals, cond u8, is_pre bool, is_plus bool, is_8bit bool, flag bool, rn u8, rd u8, offset u32) {
+fn (mut c Cpu) ldr(bus &Peripherals, cond u8, is_pre bool, is_plus bool, is_8bit bool, flag bool, rn u8, rd u8, offset_ u32) {
 	c.check_cond(bus, cond) or { return }
+	offset := if is_plus { offset_ } else { -offset_ }
 	match c.ctx.step {
 		0 {
-			c.ctx.addr = if is_plus {
-				c.regs.read(rn) + offset
-			} else {
-				c.regs.read(rn) - offset
+			c.ctx.addr = c.regs.read(rn)
+			if is_pre {
+				c.ctx.addr += offset
 			}
 			if is_pre && flag {
 				c.regs.write(rn, c.ctx.addr)
@@ -652,6 +655,7 @@ fn (mut c Cpu) ldr(bus &Peripherals, cond u8, is_pre bool, is_plus bool, is_8bit
 			val := c.read(bus, c.ctx.addr, size) or { return } & size
 			c.regs.write(rd, val)
 			if !is_pre {
+				c.ctx.addr += offset
 				c.regs.write(rn, c.ctx.addr)
 			}
 			c.ctx.step = if rd == 0xF { 2 } else { 4 }
@@ -675,15 +679,15 @@ fn (mut c Cpu) ldr(bus &Peripherals, cond u8, is_pre bool, is_plus bool, is_8bit
 	}
 }
 
-fn (mut c Cpu) str_(mut bus Peripherals, cond u8, is_pre bool, is_plus bool, is_8bit bool, flag bool, rn u8, rd u8, offset u32) {
+fn (mut c Cpu) str_(mut bus Peripherals, cond u8, is_pre bool, is_plus bool, is_8bit bool, flag bool, rn u8, rd u8, offset_ u32) {
 	c.check_cond(bus, cond) or { return }
+	offset := if is_plus { offset_ } else { -offset_ }
 	for {
 		match c.ctx.step {
 			0 {
-				c.ctx.addr = if is_plus {
-					c.regs.read(rn) + offset
-				} else {
-					c.regs.read(rn) - offset
+				c.ctx.addr = c.regs.read(rn)
+				if is_pre {
+					c.ctx.addr += offset
 				}
 				if is_pre && flag {
 					c.regs.write(rn, c.ctx.addr)
@@ -696,6 +700,7 @@ fn (mut c Cpu) str_(mut bus Peripherals, cond u8, is_pre bool, is_plus bool, is_
 				size := if is_8bit { u32(0xFF) } else { 0xFFFF_FFFF }
 				c.write(mut bus, c.ctx.addr, size & c.ctx.val, size) or { return }
 				if !is_pre {
+					c.ctx.addr += offset
 					c.regs.write(rn, c.ctx.addr)
 				}
 				c.ctx.step = 2

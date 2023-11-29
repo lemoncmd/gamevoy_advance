@@ -5,7 +5,7 @@ import peripherals { Peripherals }
 fn (mut c Cpu) read(bus &Peripherals, addr u32, size u32) ?u32 {
 	match c.ctx.waitstates {
 		0 {
-			c.ctx.bus_value = bus.read(addr)
+			c.ctx.bus_value = bus.read(addr, c.interrupts)
 			c.ctx.waitstates = bus.cycle(addr, size, false)
 			return c.read(bus, addr, size)
 		}
@@ -23,7 +23,7 @@ fn (mut c Cpu) read(bus &Peripherals, addr u32, size u32) ?u32 {
 fn (mut c Cpu) write(mut bus Peripherals, addr u32, val u32, size u32) ? {
 	match c.ctx.waitstates {
 		0 {
-			bus.write(addr, val, size)
+			bus.write(addr, val, size, mut c.interrupts)
 			c.ctx.waitstates = bus.cycle(addr, size, false)
 			return c.write(mut bus, addr, val, size)
 		}
