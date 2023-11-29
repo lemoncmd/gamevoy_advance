@@ -330,11 +330,13 @@ pub fn (mut p Ppu) emulate_cycle(mut ints Interrupts) bool {
 	p.cycle++
 	match p.cycle {
 		960 {
-			// hblank
-			p.render()
-			dispstat.set(.hblank)
-			if dispstat.has(.hblank_int_enable) {
-				ints.irq(.hblank)
+			if p.vcount < 160 {
+				// hblank
+				p.render()
+				dispstat.set(.hblank)
+				if dispstat.has(.hblank_int_enable) {
+					ints.irq(.hblank)
+				}
 			}
 		}
 		1232 {

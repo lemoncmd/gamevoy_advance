@@ -65,7 +65,7 @@ fn (mut p Ppu) render_tile_mode_bg(disp_cnt DispCnt) {
 	priorities := bg_cnts.map(it.priority())
 	bg_mode := disp_cnt.bgmode()
 	mut layer_to_render := []int{}
-	for priority in 0 .. 3 {
+	for priority in 0 .. 4 {
 		for i, bg_priority in priorities {
 			if priority == bg_priority && i in ppu.rendered_bg_in_mode[bg_mode] && bg_enable[i] {
 				layer_to_render << i
@@ -101,12 +101,12 @@ fn (mut p Ppu) render_text_layer(number int, bg_cnt BgCnt, offset_x u16, offset_
 	size_y := if bg_cnt.has(.display_size_y) { 512 } else { 256 }
 	for lx in 0 .. 240 {
 		x := u16((lx + offset_x) & (size_x - 1))
-		y := u16((lx + offset_y) & (size_y - 1))
+		y := u16((ly + offset_y) & (size_y - 1))
 
 		map_number := u16(if size_x == 512 && size_y == 512 {
-			((size_y & 0x100) >> 7) | (size_x >> 8)
+			((y & 0x100) >> 7) | (x >> 8)
 		} else {
-			(size_x >> 8) | (size_y >> 8)
+			(x >> 8) | (y >> 8)
 		})
 
 		tile_data := p.vram[map_data_address + map_number << 10 + ((y & 0xF8) << 2) +
@@ -126,23 +126,25 @@ fn (mut p Ppu) render_text_layer(number int, bg_cnt BgCnt, offset_x u16, offset_
 		palette := if bg_cnt.has(.color_mode) {
 			// 256 colors
 			Palette(Palette256{
-				number: u8(p.vram[tile_data_address + flipped_y << 3 + flipped_x >> 1] >> ((flipped_x & 1) << 3))
+				number: u8(p.vram[tile_data_address + (tile_data & 0x1F) << 5 + flipped_y << 2 +
+					flipped_x >> 1] >> ((flipped_x & 1) << 3))
 			})
 		} else {
 			// 16 palettes 16 colors
 			Palette(Palette16{
 				palette: u8(tile_data >> 12)
-				number: u8(p.vram[tile_data_address + flipped_y << 2 + flipped_x >> 2] >> ((flipped_x & 3) << 2))
+				number: u8(p.vram[tile_data_address + (tile_data & 0x1F) << 4 + flipped_y << 1 +
+					flipped_x >> 2] >> ((flipped_x & 3) << 2)) & 0xF
 			})
 		}
 
 		if !palette.is_transparent() {
 			color := p.get_color_from_palette(false, palette)
 
-			p.buffer[ly * 960 + lx * 4] = color.red()
-			p.buffer[ly * 960 + lx * 4 + 1] = color.green()
-			p.buffer[ly * 960 + lx * 4 + 2] = color.blue()
-			p.buffer[ly * 960 + lx * 4 + 3] = 255
+			p.buffer[int(ly) * 960 + lx * 4] = color.red()
+			p.buffer[int(ly) * 960 + lx * 4 + 1] = color.green()
+			p.buffer[int(ly) * 960 + lx * 4 + 2] = color.blue()
+			p.buffer[int(ly) * 960 + lx * 4 + 3] = 255
 		}
 	}
 }
