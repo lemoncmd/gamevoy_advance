@@ -1,5 +1,7 @@
 module ppu
 
+import cpu.interrupts { Interrupts }
+
 pub struct Ppu {
 mut:
 	cycle    u16
@@ -308,14 +310,14 @@ fn (mut p Ppu) write_16(addr u32, val u16, size u16) {
 	}
 }
 
-fn (mut p Ppu) check_lyc_eq_ly() {
+fn (mut p Ppu) check_lyc_eq_ly(mut ints Interrupts) {
 	lyc := p.dispstat >> 8
 	ly := p.vcount & 0xFF
 	mut dispstat := DispStat.from(p.dispstat)
 	if lyc == ly {
 		dispstat.set(.vcounter)
 		if dispstat.has(.vcounter_int_enable) {
-			// int
+			ints.irq(.lyc_eq_ly)
 		}
 	} else {
 		dispstat.clear(.vcounter)
@@ -323,7 +325,7 @@ fn (mut p Ppu) check_lyc_eq_ly() {
 	p.dispstat = u16(dispstat)
 }
 
-pub fn (mut p Ppu) emulate_cycle() bool {
+pub fn (mut p Ppu) emulate_cycle(mut ints Interrupts) bool {
 	mut dispstat := DispStat.from(p.dispstat)
 	p.cycle++
 	match p.cycle {
@@ -332,7 +334,7 @@ pub fn (mut p Ppu) emulate_cycle() bool {
 			p.render()
 			dispstat.set(.hblank)
 			if dispstat.has(.hblank_int_enable) {
-				// int
+				ints.irq(.hblank)
 			}
 		}
 		1232 {
@@ -346,7 +348,7 @@ pub fn (mut p Ppu) emulate_cycle() bool {
 					// vblank
 					dispstat.set(.vblank)
 					if dispstat.has(.vblank_int_enable) {
-						// int
+						ints.irq(.vblank)
 					}
 				}
 				228 {
@@ -356,6 +358,7 @@ pub fn (mut p Ppu) emulate_cycle() bool {
 				}
 				else {}
 			}
+			p.check_lyc_eq_ly(mut ints)
 		}
 		else {}
 	}

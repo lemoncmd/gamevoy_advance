@@ -42,7 +42,7 @@ pub mut:
 	spsr_und Psr
 }
 
-enum Mode {
+pub enum Mode {
 	user       = 0b10000
 	fiq        = 0b10001
 	irq        = 0b10010
@@ -72,6 +72,11 @@ fn (p Psr) get_mode() Mode {
 		}
 	}
 	panic('invalid cpu mode: ${mode:05b}')
+}
+
+pub fn (mut p Psr) set_mode(m Mode) {
+	p &= ~0b11111
+	p |= u32(m)
 }
 
 pub fn (mut p Psr) set_flag(f Flag, val bool) {

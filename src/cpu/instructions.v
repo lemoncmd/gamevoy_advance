@@ -883,3 +883,31 @@ fn (mut c Cpu) bl(bus &Peripherals, cond u8, offset u32) {
 		else {}
 	}
 }
+
+fn (mut c Cpu) int(bus &Peripherals) {
+	vector_pc := u32(0x18)
+	match c.ctx.step {
+		0 {
+			val := c.read(bus, vector_pc, 0xFFFF_FFFF) or { return }
+			c.ctx.opcodes[1] = val
+			old_cpsr := c.regs.cpsr
+			c.regs.cpsr.set_mode(.irq)
+			c.regs.write(0xE, c.regs.r15 - 8)
+			c.regs.write_spsr(old_cpsr)
+			c.regs.cpsr.set_flag(.t, false)
+			c.regs.cpsr.set_flag(.i, true)
+			c.regs.r15 = vector_pc + 8
+			c.ctx.step = 1
+		}
+		1 {
+			val := c.read(bus, vector_pc + 4, 0xFFFF_FFFF) or { return }
+			c.ctx.opcodes[2] = val
+			c.ctx.step = 2
+		}
+		2 {
+			c.fetch(bus) or { return }
+			c.ctx.step = 0
+		}
+		else {}
+	}
+}

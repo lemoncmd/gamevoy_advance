@@ -30,7 +30,7 @@ pub fn (mut g Gameboy) run() ! {
 
 pub fn (mut g Gameboy) emulate_cycle() bool {
 	g.cpu.emulate_cycle(mut g.peripherals)
-	if g.peripherals.ppu.emulate_cycle() {
+	if g.peripherals.ppu.emulate_cycle(mut g.cpu.interrupts) {
 		g.draw_lcd(g.peripherals.ppu.pixel_buffer())
 		return true
 	}
