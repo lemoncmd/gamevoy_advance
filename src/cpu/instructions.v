@@ -180,51 +180,45 @@ fn (mut c Cpu) mov(bus &Peripherals, cond u8, s bool, rd u8, op2 u32, is_rs bool
 
 fn (mut c Cpu) ldr(bus &Peripherals, cond u8, is_pre bool, is_plus bool, is_8bit bool, flag bool, rn u8, rd u8, offset u32) {
 	c.check_cond(bus, cond) or { return }
-	for {
-		match c.ctx.step {
-			0 {
-				c.ctx.addr = if is_plus {
-					c.regs.read(rn) + offset
-				} else {
-					c.regs.read(rn) - offset
-				}
-				if is_pre && flag {
-					c.regs.write(rn, c.ctx.addr)
-				}
-				c.regs.r15 += 4
-				c.ctx.step = 1
+	match c.ctx.step {
+		0 {
+			c.ctx.addr = if is_plus {
+				c.regs.read(rn) + offset
+			} else {
+				c.regs.read(rn) - offset
 			}
-			1 {
-				c.ctx.val = c.read(bus, c.ctx.addr, if is_8bit { u32(0xFF) } else { 0xFFFF_FFFF }) or {
-					return
-				}
-				c.regs.write(rd, c.ctx.val)
-				if !is_pre {
-					c.regs.write(rn, c.ctx.addr)
-				}
-				c.ctx.step = if rd == 0xF { 2 } else { 4 }
-				return
+			if is_pre && flag {
+				c.regs.write(rn, c.ctx.addr)
 			}
-			2 {
-				val := c.read(bus, c.regs.r15, 0xFFFF_FFFF) or { return }
-				c.ctx.opcodes[1] = val
-				c.ctx.step = 3
-				return
-			}
-			3 {
-				val := c.read(bus, c.regs.r15 + 4, 0xFFFF_FFFF) or { return }
-				c.ctx.opcodes[2] = val
-				c.regs.r15 += 8
-				c.ctx.step = 4
-				return
-			}
-			4 {
-				c.fetch(bus) or { return }
-				c.ctx.step = 0
-				return
-			}
-			else {}
+			c.regs.r15 += 4
+			c.ctx.step = 1
 		}
+		1 {
+			c.ctx.val = c.read(bus, c.ctx.addr, if is_8bit { u32(0xFF) } else { 0xFFFF_FFFF }) or {
+				return
+			}
+			c.regs.write(rd, c.ctx.val)
+			if !is_pre {
+				c.regs.write(rn, c.ctx.addr)
+			}
+			c.ctx.step = if rd == 0xF { 2 } else { 4 }
+		}
+		2 {
+			val := c.read(bus, c.regs.r15, 0xFFFF_FFFF) or { return }
+			c.ctx.opcodes[1] = val
+			c.ctx.step = 3
+		}
+		3 {
+			val := c.read(bus, c.regs.r15 + 4, 0xFFFF_FFFF) or { return }
+			c.ctx.opcodes[2] = val
+			c.regs.r15 += 8
+			c.ctx.step = 4
+		}
+		4 {
+			c.fetch(bus) or { return }
+			c.ctx.step = 0
+		}
+		else {}
 	}
 }
 
