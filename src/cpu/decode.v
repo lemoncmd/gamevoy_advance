@@ -75,76 +75,162 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 		// alu
 		0b00_0_0000_0_0000...0b00_0_0000_1_1111, 0b00_1_0000_0_0000...0b00_1_0000_1_1111 {
 			// and
+			if !opcode.bit(25) && opcode.bit(7) && opcode.bit(4) {
+				unsafe {
+					goto unusual_word
+				}
+			}
 			panic('unimplemented instruction: ${opcode:08x}')
 		}
 		0b00_0_0001_0_0000...0b00_0_0001_1_1111, 0b00_1_0001_0_0000...0b00_1_0001_1_1111 {
 			// eor
+			if !opcode.bit(25) && opcode.bit(7) && opcode.bit(4) {
+				unsafe {
+					goto unusual_word
+				}
+			}
 			panic('unimplemented instruction: ${opcode:08x}')
 		}
 		0b00_0_0010_0_0000...0b00_0_0010_1_1111, 0b00_1_0010_0_0000...0b00_1_0010_1_1111 {
 			// sub
+			if !opcode.bit(25) && opcode.bit(7) && opcode.bit(4) {
+				unsafe {
+					goto unusual_word
+				}
+			}
 			op2, is_rs, _ := c.calc_alu_op2(opcode)
 			c.sub(bus, opcode.cond(), opcode.bit(20), opcode.rn(), opcode.rd(), op2, is_rs)
 			return
 		}
 		0b00_0_0011_0_0000...0b00_0_0011_1_1111, 0b00_1_0011_0_0000...0b00_1_0011_1_1111 {
 			// rsb
+			if !opcode.bit(25) && opcode.bit(7) && opcode.bit(4) {
+				unsafe {
+					goto unusual_word
+				}
+			}
 			op2, is_rs, _ := c.calc_alu_op2(opcode)
 			c.rsb(bus, opcode.cond(), opcode.bit(20), opcode.rn(), opcode.rd(), op2, is_rs)
 			return
 		}
 		0b00_0_0100_0_0000...0b00_0_0100_1_1111, 0b00_1_0100_0_0000...0b00_1_0100_1_1111 {
 			// add
+			if !opcode.bit(25) && opcode.bit(7) && opcode.bit(4) {
+				unsafe {
+					goto unusual_word
+				}
+			}
 			op2, is_rs, _ := c.calc_alu_op2(opcode)
 			c.add(bus, opcode.cond(), opcode.bit(20), opcode.rn(), opcode.rd(), op2, is_rs)
 			return
 		}
 		0b00_0_0101_0_0000...0b00_0_0101_1_1111, 0b00_1_0101_0_0000...0b00_1_0101_1_1111 {
 			// adc
+			if !opcode.bit(25) && opcode.bit(7) && opcode.bit(4) {
+				unsafe {
+					goto unusual_word
+				}
+			}
 			panic('unimplemented instruction: ${opcode:08x}')
 		}
 		0b00_0_0110_0_0000...0b00_0_0110_1_1111, 0b00_1_0110_0_0000...0b00_1_0110_1_1111 {
 			// sbc
+			if !opcode.bit(25) && opcode.bit(7) && opcode.bit(4) {
+				unsafe {
+					goto unusual_word
+				}
+			}
 			panic('unimplemented instruction: ${opcode:08x}')
 		}
 		0b00_0_0111_0_0000...0b00_0_0111_1_1111, 0b00_1_0111_0_0000...0b00_1_0111_1_1111 {
 			// rsc
+			if !opcode.bit(25) && opcode.bit(7) && opcode.bit(4) {
+				unsafe {
+					goto unusual_word
+				}
+			}
 			panic('unimplemented instruction: ${opcode:08x}')
 		}
 		0b00_0_1000_1_0000...0b00_0_1000_1_1111, 0b00_1_1000_1_0000...0b00_1_1000_1_1111 {
 			// tst
+			if !opcode.bit(25) && opcode.bit(7) && opcode.bit(4) {
+				unsafe {
+					goto unusual_word
+				}
+			}
 			op2, is_rs, carry := c.calc_alu_op2(opcode)
 			c.tst(bus, opcode.cond(), opcode.rn(), op2, is_rs, carry)
 			return
 		}
 		0b00_0_1001_1_0000...0b00_0_1001_1_1111, 0b00_1_1001_1_0000...0b00_1_1001_1_1111 {
 			// teq
+			if !opcode.bit(25) && opcode.bit(7) && opcode.bit(4) {
+				unsafe {
+					goto unusual_word
+				}
+			}
 			panic('unimplemented instruction: ${opcode:08x}')
 		}
 		0b00_0_1010_1_0000...0b00_0_1010_1_1111, 0b00_1_1010_1_0000...0b00_1_1010_1_1111 {
 			// cmp
+			if !opcode.bit(25) && opcode.bit(7) && opcode.bit(4) {
+				unsafe {
+					goto unusual_word
+				}
+			}
 			panic('unimplemented instruction: ${opcode:08x}')
 		}
 		0b00_0_1011_1_0000...0b00_0_1011_1_1111, 0b00_1_1011_1_0000...0b00_1_1011_1_1111 {
 			// cmn
+			if !opcode.bit(25) && opcode.bit(7) && opcode.bit(4) {
+				unsafe {
+					goto unusual_word
+				}
+			}
 			panic('unimplemented instruction: ${opcode:08x}')
 		}
 		0b00_0_1100_0_0000...0b00_0_1100_1_1111, 0b00_1_1100_0_0000...0b00_1_1100_1_1111 {
 			// orr
-			panic('unimplemented instruction: ${opcode:08x}')
+			if !opcode.bit(25) && opcode.bit(7) && opcode.bit(4) {
+				unsafe {
+					goto unusual_word
+				}
+			}
+			op2, is_rs, carry := c.calc_alu_op2(opcode)
+			c.orr(bus, opcode.cond(), opcode.bit(20), opcode.rn(), opcode.rd(), op2, is_rs,
+				carry)
+			return
 		}
 		0b00_0_1101_0_0000...0b00_0_1101_1_1111, 0b00_1_1101_0_0000...0b00_1_1101_1_1111 {
 			// mov
+			if !opcode.bit(25) && opcode.bit(7) && opcode.bit(4) {
+				unsafe {
+					goto unusual_word
+				}
+			}
 			op2, is_rs, carry := c.calc_alu_op2(opcode)
 			c.mov(bus, opcode.cond(), opcode.bit(20), opcode.rd(), op2, is_rs, carry)
 			return
 		}
 		0b00_0_1110_0_0000...0b00_0_1110_1_1111, 0b00_1_1110_0_0000...0b00_1_1110_1_1111 {
 			// bic
-			panic('unimplemented instruction: ${opcode:08x}')
+			if !opcode.bit(25) && opcode.bit(7) && opcode.bit(4) {
+				unsafe {
+					goto unusual_word
+				}
+			}
+			op2, is_rs, carry := c.calc_alu_op2(opcode)
+			c.bic(bus, opcode.cond(), opcode.bit(20), opcode.rn(), opcode.rd(), op2, is_rs,
+				carry)
+			return
 		}
 		0b00_0_1111_0_0000...0b00_0_1111_1_1111, 0b00_1_1111_0_0000...0b00_1_1111_1_1111 {
 			// mvn
+			if !opcode.bit(25) && opcode.bit(7) && opcode.bit(4) {
+				unsafe {
+					goto unusual_word
+				}
+			}
 			panic('unimplemented instruction: ${opcode:08x}')
 		}
 		// data transfer
@@ -191,9 +277,40 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 			panic('unimplemented instruction: ${opcode:08x}')
 		}
 		else {
+			unusual_word:
 			if base_opcode & 0xE00 == 0 && base_opcode & 0b1001 == 0b1001 && base_opcode & 0b110 > 0 {
-				// half word
-				panic('unimplemented instruction: ${opcode:08x}')
+				// nonusual word
+				match u32(opcode.bit(20)) << 2 | (base_opcode >> 1) & 3 {
+					1 {
+						// strh
+						c.strh(mut bus, opcode.cond(), opcode.bit(24), opcode.bit(23),
+							opcode.bit(21), opcode.rn(), opcode.rd(), c.unusual_ldstr_offset(opcode))
+						return
+					}
+					2 {
+						// ldrd
+						panic('unimplemented instruction: ${opcode:08x}')
+					}
+					3 {
+						// strd
+						panic('unimplemented instruction: ${opcode:08x}')
+					}
+					5 {
+						// ldrh
+						c.ldrh(bus, opcode.cond(), opcode.bit(24), opcode.bit(23), opcode.bit(21),
+							opcode.rn(), opcode.rd(), c.unusual_ldstr_offset(opcode))
+						return
+					}
+					6 {
+						// ldrsb
+						panic('unimplemented instruction: ${opcode:08x}')
+					}
+					7 {
+						// ldrsh
+						panic('unimplemented instruction: ${opcode:08x}')
+					}
+					else {}
+				}
 			}
 		}
 	}

@@ -102,6 +102,16 @@ fn (c &Cpu) ldstr_offset(opcode Opcode) u32 {
 	}
 }
 
+fn (c &Cpu) unusual_ldstr_offset(opcode Opcode) u32 {
+	return if opcode.bit(22) {
+		// imm
+		u32(opcode) & 0xF | (u32(opcode) >> 4) & 0xF0
+	} else {
+		// reg
+		c.regs.read(opcode.rm())
+	}
+}
+
 fn (c &Cpu) msr_value(opcode Opcode) u32 {
 	if opcode.bit(25) {
 		// imm
