@@ -1,49 +1,38 @@
 module ppu
 
 @[flag]
-enum ObjAttr as u16 {
-	y0
-	y1
-	y2
-	y3
-	y4
-	y5
-	y6
-	y7
-	affine_enable
-	invisible_or_double
-	mode0
-	mode1
-	mosaic_enable
-	palette
-	shape0
-	shape1
+enum WindowFlag as u8 {
+	bg0_enable
+	bg1_enable
+	bg2_enable
+	bg3_enable
+	obj_enable
+	effect
 }
 
-fn (o ObjAttr) y() u8 {
-	return u8(o)
-}
-
-fn (o ObjAttr) mode() u16 {
-	return (u16(o) >> 10) & 3
-}
-
-fn (o ObjAttr) shape() u16 {
-	return u16(o) >> 14
-}
-
-const shape_length = [
-	[8, 8, 16, 32]!,
-	[8, 16, 32, 64]!,
-	[16, 32, 32, 64]!,
-]!
-
-fn (mut p Ppu) render_obj(winflags [240]WindowFlag, priorities [240]u8) {
-	if !DispCnt.from(p.dispcnt).has(.obj_enable) {
-		return
+fn (w WindowFlag) bg_enable(number int) bool {
+	return match number {
+		0 { w.has(.bg0_enable) }
+		1 { w.has(.bg1_enable) }
+		2 { w.has(.bg2_enable) }
+		else { w.has(.bg3_enable) }
 	}
+}
+
+fn (mut p Ppu) calculate_window(mut winflags [240]WindowFlag) {
+	dispcnt := DispCnt.from(p.dispcnt)
+	if dispcnt.has(.obj_enable) && dispcnt.has(.objwin_enable) {
+		p.calculate_obj_window(mut winflags)
+	}
+}
+
+fn (mut p Ppu) calculate_obj_window(mut winflags [240]WindowFlag) {
 	for i in 0 .. 128 {
 		attr1 := unsafe { ObjAttr(p.oam[i << 1]) }
+		if attr1.mode() != 2 {
+			continue
+		}
+
 		attr2 := u16(p.oam[i << 1] >> 16)
 
 		if !attr1.has(.affine_enable) && attr1.has(.invisible_or_double) {
@@ -53,9 +42,9 @@ fn (mut p Ppu) render_obj(winflags [240]WindowFlag, priorities [240]u8) {
 		ly := p.vcount & 0xFF
 		y := attr1.y()
 		y_size := match attr1.shape() {
-			0 { ppu.shape_length[1][attr2 >> 14] }
-			1 { ppu.shape_length[0][attr2 >> 14] }
-			2 { ppu.shape_length[2][attr2 >> 14] }
+			0 { shape_length[1][attr2 >> 14] }
+			1 { shape_length[0][attr2 >> 14] }
+			2 { shape_length[2][attr2 >> 14] }
 			else { 0 }
 		}
 
@@ -69,29 +58,26 @@ fn (mut p Ppu) render_obj(winflags [240]WindowFlag, priorities [240]u8) {
 			ly - y
 		}
 		x_size := match attr1.shape() {
-			0 { ppu.shape_length[1][attr2 >> 14] }
-			1 { ppu.shape_length[2][attr2 >> 14] }
-			2 { ppu.shape_length[0][attr2 >> 14] }
+			0 { shape_length[1][attr2 >> 14] }
+			1 { shape_length[2][attr2 >> 14] }
+			2 { shape_length[0][attr2 >> 14] }
 			else { 0 }
 		}
 
 		if !attr1.has(.affine_enable) {
-			p.render_text_obj(winflags, priorities, attr1.mode(), i, ly, flipped_y, attr1.has(.palette),
+			p.calculate_text_obj(mut winflags, i, ly, flipped_y, attr1.has(.palette),
 				x_size)
 		}
 	}
 }
 
-fn (mut p Ppu) render_text_obj(winflags [240]WindowFlag, priorities [240]u8, mode u16, i int, ly int, flipped_y int, color_mode bool, x_size int) {
+fn (mut p Ppu) calculate_text_obj(mut winflags [240]WindowFlag, i int, ly int, flipped_y int, color_mode bool, x_size int) {
+	winflag := unsafe { WindowFlag(u8(p.winout >> 8)) }
 	attr2 := u16(p.oam[i << 1] >> 16)
 	attr3 := u16(p.oam[i << 1 + 1])
 
 	x := attr2 & 0x1FF
 	for lx in 0 .. 240 {
-		if !winflags[lx].has(.obj_enable) || priorities[lx] < ((attr3 >> 10) & 3) {
-			continue
-		}
-
 		if lx < x || x + x_size <= lx {
 			continue
 		}
@@ -128,13 +114,8 @@ fn (mut p Ppu) render_text_obj(winflags [240]WindowFlag, priorities [240]u8, mod
 			})
 		}
 
-		if mode == 0 && !palette.is_transparent() {
-			color := p.get_color_from_palette(true, palette)
-
-			p.buffer[ly * 960 + lx * 4] = color.red()
-			p.buffer[ly * 960 + lx * 4 + 1] = color.green()
-			p.buffer[ly * 960 + lx * 4 + 2] = color.blue()
-			p.buffer[ly * 960 + lx * 4 + 3] = 255
+		if !palette.is_transparent() {
+			winflags[lx] = winflag
 		}
 	}
 }

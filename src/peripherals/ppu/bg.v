@@ -53,12 +53,12 @@ fn (mut p Ppu) fill_with_backdrop() {
 	}
 }
 
-fn (mut p Ppu) render_bg() {
+fn (mut p Ppu) render_bg(winflags [240]WindowFlag, mut priorities [240]u8) {
 	disp_cnt := DispCnt.from(p.dispcnt)
 	if disp_cnt.bgmode() < 3 {
-		p.render_tile_mode_bg(disp_cnt)
+		p.render_tile_mode_bg(winflags, mut priorities, disp_cnt)
 	} else {
-		p.render_bitmap_mode_bg(disp_cnt)
+		p.render_bitmap_mode_bg(winflags, mut priorities, disp_cnt)
 	}
 }
 
@@ -68,7 +68,7 @@ const rendered_bg_in_mode = [
 	[2, 3],
 ]
 
-fn (mut p Ppu) render_tile_mode_bg(disp_cnt DispCnt) {
+fn (mut p Ppu) render_tile_mode_bg(winflags [240]WindowFlag, mut priorities [240]u8, disp_cnt DispCnt) {
 	bg_enable := [
 		disp_cnt.has(.bg0_enable),
 		disp_cnt.has(.bg1_enable),
@@ -76,11 +76,11 @@ fn (mut p Ppu) render_tile_mode_bg(disp_cnt DispCnt) {
 		disp_cnt.has(.bg3_enable),
 	]
 	bg_cnts := [p.bg0cnt, p.bg1cnt, p.bg2cnt, p.bg3cnt].map(BgCnt.from(it))
-	priorities := bg_cnts.map(it.priority())
+	bg_priorities := bg_cnts.map(it.priority())
 	bg_mode := disp_cnt.bgmode()
 	mut layer_to_render := []int{}
 	for priority in 0 .. 4 {
-		for i, bg_priority in priorities {
+		for i, bg_priority in bg_priorities {
 			if priority == bg_priority && i in ppu.rendered_bg_in_mode[bg_mode] && bg_enable[i] {
 				layer_to_render << i
 			}
@@ -100,20 +100,24 @@ fn (mut p Ppu) render_tile_mode_bg(disp_cnt DispCnt) {
 				2 { p.bg2vofs }
 				else { p.bg3vofs }
 			} & 0x1FF
-			p.render_text_layer(layer, bg_cnts[layer], offset_x, offset_y)
+			p.render_text_layer(winflags, mut priorities, layer, bg_cnts[layer], offset_x,
+				offset_y)
 		} else {
-			p.render_affine_layer(layer, bg_cnts[layer])
+			p.render_affine_layer(winflags, mut priorities, layer, bg_cnts[layer])
 		}
 	}
 }
 
-fn (mut p Ppu) render_text_layer(number int, bg_cnt BgCnt, offset_x u16, offset_y u16) {
+fn (mut p Ppu) render_text_layer(winflags [240]WindowFlag, mut priorities [240]u8, number int, bg_cnt BgCnt, offset_x u16, offset_y u16) {
 	tile_data_address := bg_cnt.tile_data_address()
 	map_data_address := bg_cnt.map_data_address()
 	ly := p.vcount & 0xFF
 	size_x := if bg_cnt.has(.display_size_x) { 512 } else { 256 }
 	size_y := if bg_cnt.has(.display_size_y) { 512 } else { 256 }
 	for lx in 0 .. 240 {
+		if !winflags[lx].bg_enable(number) {
+			continue
+		}
 		x := u16((lx + offset_x) & (size_x - 1))
 		y := u16((ly + offset_y) & (size_y - 1))
 
@@ -159,10 +163,12 @@ fn (mut p Ppu) render_text_layer(number int, bg_cnt BgCnt, offset_x u16, offset_
 			p.buffer[int(ly) * 960 + lx * 4 + 1] = color.green()
 			p.buffer[int(ly) * 960 + lx * 4 + 2] = color.blue()
 			p.buffer[int(ly) * 960 + lx * 4 + 3] = 255
+
+			priorities[lx] = bg_cnt.priority()
 		}
 	}
 }
 
-fn (mut p Ppu) render_affine_layer(number int, bg_cnt BgCnt) {}
+fn (mut p Ppu) render_affine_layer(winflags [240]WindowFlag, mut priorities [240]u8, number int, bg_cnt BgCnt) {}
 
-fn (mut p Ppu) render_bitmap_mode_bg(disp_cnt DispCnt) {}
+fn (mut p Ppu) render_bitmap_mode_bg(winflags [240]WindowFlag, mut priorities [240]u8, disp_cnt DispCnt) {}
