@@ -368,7 +368,9 @@ pub fn (mut p Ppu) emulate_cycle(mut ints Interrupts) bool {
 }
 
 fn (mut p Ppu) render() {
+	p.fill_with_backdrop()
 	p.render_bg()
+	p.render_obj()
 }
 
 pub fn (p &Ppu) pixel_buffer() []u8 {

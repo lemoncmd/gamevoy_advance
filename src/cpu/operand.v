@@ -40,29 +40,50 @@ fn (c &Cpu) calc_alu_op2(opcode Opcode) (u32, bool, ?bool) {
 		} else {
 			(u32(opcode) >> 7) & 0x1F
 		}
-		op2, carry := match (u32(opcode) >> 5) & 3 {
+		// TODO want to merge these two matches if v fix bug
+		op2 := match (u32(opcode) >> 5) & 3 {
 			0 {
-				ca := if ls == 0 { ?bool(none) } else { (rm >> (32 - ls)) & 1 > 0 }
-				rm << ls, ca
+				rm << ls
 			}
 			1 {
 				ls2 := if !r && ls == 0 { 32 } else { ls }
-				ca := if ls2 == 0 { ?bool(none) } else { (rm >> (ls2 - 1)) & 1 > 0 }
-				rm >> ls2, ca
+				rm >> ls2
 			}
 			2 {
 				ls2 := if !r && ls == 0 { 32 } else { ls }
-				ca := if ls2 == 0 { ?bool(none) } else { (rm >> (ls2 - 1)) & 1 > 0 }
-				u32(i32(rm) >> ls2), ca
+				u32(i32(rm) >> ls2)
 			}
 			else {
 				if !r && ls == 0 {
-					rm >> 1 | (u32(c.regs.cpsr.get_flag(.c)) << 31), ?bool(rm & 1 > 0)
+					rm >> 1 | (u32(c.regs.cpsr.get_flag(.c)) << 31)
 				} else {
 					ls2 := ls & 0x1F
-					op2_ := rm >> ls2 | rm << (32 - ls2)
-					ca := if ls == 0 { ?bool(none) } else { op2_ >> 31 > 0 }
-					op2_, ca
+					rm >> ls2 | rm << (32 - ls2)
+				}
+			}
+		}
+		ls2 := if !r && ls == 0 { 32 } else { ls }
+		carry := match (u32(opcode) >> 5) & 3 {
+			0 {
+				if ls == 0 { ?bool(none) } else { (rm >> (32 - ls)) & 1 > 0 }
+			}
+			1 {
+				if ls2 == 0 { ?bool(none) } else { (rm >> (ls2 - 1)) & 1 > 0 }
+			}
+			2 {
+				if ls2 == 0 { ?bool(none) } else { (rm >> (ls2 - 1)) & 1 > 0 }
+			}
+			else {
+				if !r && ls == 0 {
+					?bool(rm & 1 > 0)
+				} else {
+					ls3 := ls & 0x1F
+					op2_ := rm >> ls3 | rm << (32 - ls3)
+					if ls == 0 {
+						?bool(none)
+					} else {
+						op2_ >> 31 > 0
+					}
 				}
 			}
 		}

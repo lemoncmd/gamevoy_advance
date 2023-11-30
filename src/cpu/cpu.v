@@ -34,8 +34,12 @@ pub fn (mut c Cpu) init(bus &Peripherals) {
 }
 
 pub fn (mut c Cpu) emulate_cycle(mut bus Peripherals) {
-	// println('${c.regs.r15:08x} ${c.regs.read(0):08x}')
+	// if c.ctx.step == 0 {println('pc:${c.regs.r15:08x}')}
 	// println('${c.ctx.opcodes[0]:08x}, ${c.ctx.opcodes[1]:08x}, ${c.ctx.opcodes[2]:08x}')
+	/*
+	if c.regs.r15 == 0x2840 {
+		println('${c.regs.read(0):08x} ${c.regs.read(1):08x} ${c.regs.read(2):08x} ${c.regs.read(3):08x}')
+	}*/
 	if c.ctx.in_int {
 		c.int(bus)
 	} else {

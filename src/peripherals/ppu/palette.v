@@ -42,6 +42,6 @@ fn (p Palette) is_transparent() bool {
 }
 
 fn (p &Ppu) get_color_from_palette(is_obj_palette bool, palette Palette) Color {
-	palette_address := (if is_obj_palette { 0x200 } else { 0 }) + palette.get_color_number()
+	palette_address := (if is_obj_palette { 0x100 } else { 0 }) + palette.get_color_number()
 	return Color(p.palette[palette_address])
 }

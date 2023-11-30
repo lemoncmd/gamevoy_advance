@@ -169,8 +169,7 @@ fn (mut c Cpu) sub(bus &Peripherals, cond u8, s bool, rn u8, rd u8, op2 u32, is_
 					if rd == 0xF {
 						c.regs.cpsr = c.regs.read_spsr()
 					} else {
-						c.regs.cpsr.set_flag(.v, (rn_val ^ op2) >> 31 != 0
-							&& (rn_val ^ result) >> 31 > 0)
+						c.regs.cpsr.set_flag(.v, ((rn_val ^ op2) & (rn_val ^ result)) >> 31 > 0)
 						c.regs.cpsr.set_flag(.c, carry > 0)
 						c.regs.cpsr.set_flag(.z, result == 0)
 						c.regs.cpsr.set_flag(.n, result >> 31 > 0)
@@ -219,8 +218,7 @@ fn (mut c Cpu) rsb(bus &Peripherals, cond u8, s bool, rn u8, rd u8, op2 u32, is_
 					if rd == 0xF {
 						c.regs.cpsr = c.regs.read_spsr()
 					} else {
-						c.regs.cpsr.set_flag(.v, (op2 ^ rn_val) >> 31 != 0
-							&& (op2 ^ result) >> 31 > 0)
+						c.regs.cpsr.set_flag(.v, ((rn_val ^ op2) & (op2 ^ result)) >> 31 > 0)
 						c.regs.cpsr.set_flag(.c, carry > 0)
 						c.regs.cpsr.set_flag(.z, result == 0)
 						c.regs.cpsr.set_flag(.n, result >> 31 > 0)
@@ -269,8 +267,7 @@ fn (mut c Cpu) add(bus &Peripherals, cond u8, s bool, rn u8, rd u8, op2 u32, is_
 					if rd == 0xF {
 						c.regs.cpsr = c.regs.read_spsr()
 					} else {
-						c.regs.cpsr.set_flag(.v, (rn_val ^ op2) >> 31 == 0
-							&& (rn_val ^ result) >> 31 > 0)
+						c.regs.cpsr.set_flag(.v, (~(rn_val ^ op2) & (rn_val ^ result)) >> 31 > 0)
 						c.regs.cpsr.set_flag(.c, carry > 0)
 						c.regs.cpsr.set_flag(.z, result == 0)
 						c.regs.cpsr.set_flag(.n, result >> 31 > 0)
@@ -343,7 +340,7 @@ fn (mut c Cpu) cmp(bus &Peripherals, cond u8, rn u8, op2 u32, is_rs bool) {
 				c.regs.r15 += 4
 				rn_val := c.regs.read(rn)
 				result, carry := bits.sub_32(rn_val, op2, 0)
-				c.regs.cpsr.set_flag(.v, (rn_val ^ op2) >> 31 != 0 && (rn_val ^ result) >> 31 > 0)
+				c.regs.cpsr.set_flag(.v, ((rn_val ^ op2) & (rn_val ^ result)) >> 31 > 0)
 				c.regs.cpsr.set_flag(.c, carry > 0)
 				c.regs.cpsr.set_flag(.z, result == 0)
 				c.regs.cpsr.set_flag(.n, result >> 31 > 0)

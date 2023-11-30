@@ -30,14 +30,11 @@ pub fn (p &Peripherals) read(addr u32, ints &Interrupts) u32 {
 		0x0000_0000...0x0000_3FFF {
 			p.bios.read(addr)
 		}
-		// TODO prefetched inst
-		0x0000_4000...0x0001_FFFF {
-			0
-		}
 		0x0400_0000...0x0400_005F {
 			p.ppu.read(addr)
 		}
 		0x0400_0060...0x0400_00AB {
+			println('unsupported read: ${addr:08x}')
 			0
 		}
 		0x0400_0200...0x0400_020B {
@@ -72,18 +69,8 @@ pub fn (mut p Peripherals) write(addr u32, val u32, size u32, mut ints Interrupt
 		0x0400_0200...0x0400_020B {
 			ints.write(addr, val, size)
 		}
-		0x0400_020C...0x0400_02FF {
-			println('unsupported write: ${addr:08x}')
-		}
 		0x0400_0300...0x0400_0303 {
 			ints.write(addr, val, size)
-		}
-		0x0400_0304...0x0400_03FF {
-			println('unsupported write: ${addr:08x}')
-		}
-		// ???
-		0x0400_8000, 0x0400_8020 {
-			println('unsupported write: ${addr:08x}')
 		}
 		else {
 			match addr >> 24 {

@@ -1,7 +1,7 @@
 module ppu
 
 @[flag]
-enum BgCnt {
+enum BgCnt as u16 {
 	priority_0
 	priority_1
 	tile_data_addr_0
@@ -37,6 +37,20 @@ fn (b BgCnt) map_data_address() u16 {
 
 fn (b BgCnt) display_size() u16 {
 	return 128 << (u16(b) >> 14)
+}
+
+fn (mut p Ppu) fill_with_backdrop() {
+	color := p.get_color_from_palette(false, Palette16{
+		palette: 0
+		number: 0
+	})
+	ly := p.vcount & 0xFF
+	for lx in 0 .. 240 {
+		p.buffer[int(ly) * 960 + lx * 4] = color.red()
+		p.buffer[int(ly) * 960 + lx * 4 + 1] = color.green()
+		p.buffer[int(ly) * 960 + lx * 4 + 2] = color.blue()
+		p.buffer[int(ly) * 960 + lx * 4 + 3] = 255
+	}
 }
 
 fn (mut p Ppu) render_bg() {
@@ -88,7 +102,7 @@ fn (mut p Ppu) render_tile_mode_bg(disp_cnt DispCnt) {
 			} & 0x1FF
 			p.render_text_layer(layer, bg_cnts[layer], offset_x, offset_y)
 		} else {
-			p.render_scale_rot_layer(layer, bg_cnts[layer])
+			p.render_affine_layer(layer, bg_cnts[layer])
 		}
 	}
 }
@@ -126,19 +140,19 @@ fn (mut p Ppu) render_text_layer(number int, bg_cnt BgCnt, offset_x u16, offset_
 		palette := if bg_cnt.has(.color_mode) {
 			// 256 colors
 			Palette(Palette256{
-				number: u8(p.vram[tile_data_address + (tile_data & 0x1F) << 5 + flipped_y << 2 +
+				number: u8(p.vram[tile_data_address + (tile_data & 0x3FF) << 5 + flipped_y << 2 +
 					flipped_x >> 1] >> ((flipped_x & 1) << 3))
 			})
 		} else {
 			// 16 palettes 16 colors
 			Palette(Palette16{
 				palette: u8(tile_data >> 12)
-				number: u8(p.vram[tile_data_address + (tile_data & 0x1F) << 4 + flipped_y << 1 +
+				number: u8(p.vram[tile_data_address + (tile_data & 0x3FF) << 4 + flipped_y << 1 +
 					flipped_x >> 2] >> ((flipped_x & 3) << 2)) & 0xF
 			})
 		}
 
-		if !palette.is_transparent() {
+		if !palette.is_transparent() || number == 0 {
 			color := p.get_color_from_palette(false, palette)
 
 			p.buffer[int(ly) * 960 + lx * 4] = color.red()
@@ -149,6 +163,6 @@ fn (mut p Ppu) render_text_layer(number int, bg_cnt BgCnt, offset_x u16, offset_
 	}
 }
 
-fn (mut p Ppu) render_scale_rot_layer(number int, bg_cnt BgCnt) {}
+fn (mut p Ppu) render_affine_layer(number int, bg_cnt BgCnt) {}
 
 fn (mut p Ppu) render_bitmap_mode_bg(disp_cnt DispCnt) {}
