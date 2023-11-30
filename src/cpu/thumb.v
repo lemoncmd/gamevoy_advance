@@ -227,3 +227,84 @@ fn (mut c Cpu) thumb_arith_add(bus &Peripherals, op u8, rs u8, rd u8) {
 		}
 	}
 }
+
+fn (mut c Cpu) thumb_hi_reg(bus &Peripherals, op u8, msbd bool, msbs bool, rs_ u8, rd_ u8) {
+	for {
+		match c.ctx.step {
+			0 {
+				rd := if op == 3 { u8(0xF) } else { u8(msbd) << 3 | rd_ }
+				rs := u8(msbs) << 3 | rs_
+				c.regs.r15 += 2
+				if op == 2 && rd == 8 && rs == 8 {
+					c.ctx.step = 3
+					continue
+				}
+				c.ctx.val = 2
+				if op == 1 {
+					rd_val := c.regs.read(rd)
+					rs_val := c.regs.read(rs)
+					result, carry := bits.sub_32(rd_val, rs_val, 0)
+					c.regs.cpsr.set_flag(.v, ((rd_val ^ rs_val) & (rd_val ^ result)) >> 31 > 0)
+					c.regs.cpsr.set_flag(.c, carry > 0)
+					c.regs.cpsr.set_flag(.z, result == 0)
+					c.regs.cpsr.set_flag(.n, result >> 31 > 0)
+				} else if op == 3 {
+					rs_val := c.regs.read(rs)
+					is_thumb := rs_val & 1 > 0
+					val := rs_val & u32(if is_thumb { ~1 } else { ~3 })
+					c.regs.write(rd, val)
+					c.ctx.val = u32(if is_thumb { 2 } else { 4 })
+					if !is_thumb {
+						c.regs.cpsr.set_flag(.t, false)
+					}
+				} else {
+					val := c.regs.read(rs) + if op == 0 { c.regs.read(rd) } else { 0 }
+					c.regs.write(rd, val)
+				}
+				c.ctx.step = if rd == 0xF { 1 } else { 3 }
+			}
+			1 {
+				size := if c.ctx.val == 2 { u32(0xFFFF) } else { 0xFFFF_FFFF }
+				val := c.read(bus, c.regs.r15, size) or { return }
+				c.ctx.opcodes[1] = val
+				c.ctx.step = 2
+				return
+			}
+			2 {
+				size := if c.ctx.val == 2 { u32(0xFFFF) } else { 0xFFFF_FFFF }
+				val := c.read(bus, c.regs.r15 + c.ctx.val, size) or { return }
+				c.ctx.opcodes[2] = val
+				c.regs.r15 += c.ctx.val << 1
+				c.ctx.step = 3
+				return
+			}
+			3 {
+				c.fetch(bus) or { return }
+				c.ctx.step = 0
+				return
+			}
+			else {}
+		}
+	}
+}
+
+fn (mut c Cpu) thumb_ldr(bus &Peripherals, rd u8, offset_ u8) {
+	offset := u16(offset_) << 2
+	match c.ctx.step {
+		0 {
+			c.ctx.addr = (c.regs.r15 & ~2) + offset
+			c.regs.r15 += 2
+			c.ctx.step = 1
+		}
+		1 {
+			val := c.read(bus, c.ctx.addr, 0xFFFF_FFFF) or { return }
+			c.regs.write(rd, val)
+			c.ctx.step = 2
+		}
+		2 {
+			c.fetch(bus) or { return }
+			c.ctx.step = 0
+		}
+		else {}
+	}
+}

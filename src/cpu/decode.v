@@ -375,32 +375,39 @@ fn (mut c Cpu) decode_thumb(mut bus Peripherals) {
 			// alu op
 			op := u8(opcode >> 6) & 0xF
 			match op {
-				0x0, 0x1, 0x8, 0xC, 0xE, 0xF { c.thumb_arith_logic(bus, op, opcode.rs(),
-						opcode.rd()) }
-				0x2, 0x3, 0x4, 0x7 { c.thumb_arith_shift(bus, op, opcode.rs(), opcode.rd()) }
-				0x5, 0x6, 0x9, 0xA, 0xB { c.thumb_arith_add(bus, op, opcode.rs(), opcode.rd()) }
-				else { c.thumb_mul(bus, op, opcode.rs(), opcode.rd()) }
+				0x0, 0x1, 0x8, 0xC, 0xE, 0xF {
+					c.thumb_arith_logic(bus, op, opcode.rs(), opcode.rd())
+				}
+				0x2, 0x3, 0x4, 0x7 {
+					c.thumb_arith_shift(bus, op, opcode.rs(), opcode.rd())
+				}
+				0x5, 0x6, 0x9, 0xA, 0xB {
+					c.thumb_arith_add(bus, op, opcode.rs(), opcode.rd())
+				}
+				else {
+					c.thumb_mul(bus, op, opcode.rs(), opcode.rd())
+				}
 			}
 		}
 		0b010001_00 {
 			// add register to register
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_hi_reg(bus, 0, opcode.bit(7), opcode.bit(6), opcode.rs(), opcode.rd())
 		}
 		0b010001_01 {
 			// cmp registers
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_hi_reg(bus, 1, opcode.bit(7), opcode.bit(6), opcode.rs(), opcode.rd())
 		}
 		0b010001_10 {
 			// mov register to register
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_hi_reg(bus, 2, opcode.bit(7), opcode.bit(6), opcode.rs(), opcode.rd())
 		}
 		0b010001_11 {
 			// jump
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_hi_reg(bus, 3, opcode.bit(7), opcode.bit(6), opcode.rs(), opcode.rd())
 		}
 		0b01001_000...0b01001_111 {
 			// load pc relative
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_ldr(bus, opcode.rd8(), u8(opcode))
 		}
 		0b0101_00_0_0, 0b0101_00_0_1 {
 			// str
