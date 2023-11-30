@@ -308,3 +308,329 @@ fn (mut c Cpu) thumb_ldr(bus &Peripherals, rd u8, offset_ u8) {
 		else {}
 	}
 }
+
+fn (mut c Cpu) thumb_str_reg_offset(mut bus Peripherals, size u32, ro u8, rb u8, rd u8) {
+	for {
+		match c.ctx.step {
+			0 {
+				c.ctx.addr = c.regs.read(rb) + c.regs.read(ro)
+				c.regs.r15 += 2
+				c.ctx.step = 1
+			}
+			1 {
+				c.write(mut bus, c.ctx.addr, size & c.regs.read(rd), size) or { return }
+				c.ctx.step = 2
+				return
+			}
+			2 {
+				c.fetch(bus) or { return }
+				c.ctx.step = 0
+				return
+			}
+			else {}
+		}
+	}
+}
+
+fn (mut c Cpu) thumb_ldr_reg_offset(bus &Peripherals, size u32, signed bool, ro u8, rb u8, rd u8) {
+	match c.ctx.step {
+		0 {
+			c.ctx.addr = c.regs.read(rb) + c.regs.read(ro)
+			c.regs.r15 += 2
+			c.ctx.step = 1
+		}
+		1 {
+			mut val := c.read(bus, c.ctx.addr, size) or { return } & size
+			if signed {
+				if size == 0xFF {
+					val = u32(i32(val << 24) >> 24)
+				} else {
+					val = u32(i32(val << 16) >> 16)
+				}
+			}
+			c.regs.write(rd, val)
+			c.ctx.step = 2
+		}
+		2 {
+			c.fetch(bus) or { return }
+			c.ctx.step = 0
+		}
+		else {}
+	}
+}
+
+fn (mut c Cpu) thumb_str_imm_offset(mut bus Peripherals, size u32, imm u8, rb u8, rd u8) {
+	for {
+		match c.ctx.step {
+			0 {
+				c.ctx.addr = c.regs.read(rb) + imm
+				c.regs.r15 += 2
+				c.ctx.step = 1
+			}
+			1 {
+				c.write(mut bus, c.ctx.addr, size & c.regs.read(rd), size) or { return }
+				c.ctx.step = 2
+				return
+			}
+			2 {
+				c.fetch(bus) or { return }
+				c.ctx.step = 0
+				return
+			}
+			else {}
+		}
+	}
+}
+
+fn (mut c Cpu) thumb_ldr_imm_offset(bus &Peripherals, size u32, imm u8, rb u8, rd u8) {
+	match c.ctx.step {
+		0 {
+			c.ctx.addr = c.regs.read(rb) + imm
+			c.regs.r15 += 2
+			c.ctx.step = 1
+		}
+		1 {
+			mut val := c.read(bus, c.ctx.addr, size) or { return } & size
+			c.regs.write(rd, val)
+			c.ctx.step = 2
+		}
+		2 {
+			c.fetch(bus) or { return }
+			c.ctx.step = 0
+		}
+		else {}
+	}
+}
+
+fn (mut c Cpu) thumb_str_sp_relative(mut bus Peripherals, rd u8, imm u16) {
+	for {
+		match c.ctx.step {
+			0 {
+				c.ctx.addr = c.regs.read(13) + imm
+				c.regs.r15 += 2
+				c.ctx.step = 1
+			}
+			1 {
+				c.write(mut bus, c.ctx.addr, c.regs.read(rd), 0xFFFF_FFFF) or { return }
+				c.ctx.step = 2
+				return
+			}
+			2 {
+				c.fetch(bus) or { return }
+				c.ctx.step = 0
+				return
+			}
+			else {}
+		}
+	}
+}
+
+fn (mut c Cpu) thumb_ldr_sp_relative(bus &Peripherals, rd u8, imm u16) {
+	match c.ctx.step {
+		0 {
+			c.ctx.addr = c.regs.read(13) + imm
+			c.regs.r15 += 2
+			c.ctx.step = 1
+		}
+		1 {
+			mut val := c.read(bus, c.ctx.addr, 0xFFFF_FFFF) or { return }
+			c.regs.write(rd, val)
+			c.ctx.step = 2
+		}
+		2 {
+			c.fetch(bus) or { return }
+			c.ctx.step = 0
+		}
+		else {}
+	}
+}
+
+fn (mut c Cpu) thumb_load_pc_address(bus &Peripherals, rd u8, imm u16) {
+	for {
+		match c.ctx.step {
+			0 {
+				c.regs.write(rd, (c.regs.r15 & ~2) + imm)
+				c.regs.r15 += 2
+				c.ctx.step = 1
+			}
+			1 {
+				c.fetch(bus) or { return }
+				c.ctx.step = 0
+				return
+			}
+			else {}
+		}
+	}
+}
+
+fn (mut c Cpu) thumb_load_sp_address(bus &Peripherals, rd u8, imm u16) {
+	for {
+		match c.ctx.step {
+			0 {
+				c.regs.write(rd, c.regs.read(13) + imm)
+				c.regs.r15 += 2
+				c.ctx.step = 1
+			}
+			1 {
+				c.fetch(bus) or { return }
+				c.ctx.step = 0
+				return
+			}
+			else {}
+		}
+	}
+}
+
+fn (mut c Cpu) thumb_add_sp(bus &Peripherals, op bool, imm_ u16) {
+	for {
+		match c.ctx.step {
+			0 {
+				imm := if op { -imm_ } else { imm_ }
+				c.regs.write(13, c.regs.read(13) + imm)
+				c.regs.r15 += 2
+				c.ctx.step = 1
+			}
+			1 {
+				c.fetch(bus) or { return }
+				c.ctx.step = 0
+				return
+			}
+			else {}
+		}
+	}
+}
+
+fn (mut c Cpu) thumb_pop(bus &Peripherals, pop_pc bool, rlist_ u8) {
+	rlist := u16(rlist_) | u16(if pop_pc { 0x8000 } else { 0 })
+	match c.ctx.step {
+		0 {
+			c.ctx.addr = c.regs.read(13)
+			c.ctx.val = rlist
+			c.regs.r15 += 4
+			c.ctx.step = if rlist == 0 { 4 } else { 1 }
+		}
+		1 {
+			val := c.read(bus, c.ctx.addr, 0xFFFF_FFFF) or { return }
+			reg := bits.trailing_zeros_16(u16(c.ctx.val))
+			c.regs.write(u8(reg), val)
+			c.ctx.val &= ~(1 << reg)
+			c.ctx.addr += 4
+			c.regs.write(13, c.ctx.addr)
+			if c.ctx.val == 0 {
+				c.ctx.step = if rlist >> 15 > 0 { 2 } else { 4 }
+			}
+		}
+		2 {
+			val := c.read(bus, c.regs.r15, 0xFFFF_FFFF) or { return }
+			c.ctx.opcodes[1] = val
+			c.ctx.step = 3
+		}
+		3 {
+			val := c.read(bus, c.regs.r15 + 4, 0xFFFF_FFFF) or { return }
+			c.ctx.opcodes[2] = val
+			c.regs.r15 += 8
+			c.ctx.step = 4
+		}
+		4 {
+			c.fetch(bus) or { return }
+			c.ctx.step = 0
+		}
+		else {}
+	}
+}
+
+fn (mut c Cpu) thumb_push(mut bus Peripherals, push_lr bool, rlist_ u8) {
+	rlist := u16(rlist_) | u16(if push_lr { 0x4000 } else { 0 })
+	for {
+		match c.ctx.step {
+			0 {
+				c.ctx.addr = c.regs.read(13)
+				c.ctx.addr -= 4
+				if rlist != 0 {
+					c.regs.write(13, c.ctx.addr)
+				}
+				c.ctx.val = rlist
+				c.regs.r15 += 4
+				c.ctx.step = if rlist == 0 { 2 } else { 1 }
+			}
+			1 {
+				reg := bits.len_16(u16(c.ctx.val)) - 1
+				val := c.regs.read(u8(reg))
+				c.write(mut bus, c.ctx.addr, val, 0xFFFF_FFFF) or { return }
+				c.ctx.val &= ~(1 << reg)
+				if c.ctx.val != 0 {
+					c.ctx.addr -= 4
+					c.regs.write(13, c.ctx.addr)
+				}
+				if c.ctx.val == 0 {
+					c.ctx.step = 2
+				}
+				return
+			}
+			2 {
+				c.fetch(bus) or { return }
+				c.ctx.step = 0
+				return
+			}
+			else {}
+		}
+	}
+}
+
+fn (mut c Cpu) thumb_ldmia(bus &Peripherals, rd u8, rlist u8) {
+	match c.ctx.step {
+		0 {
+			c.ctx.addr = c.regs.read(rd)
+			c.ctx.val = rlist
+			c.regs.r15 += 4
+			c.ctx.step = if rlist == 0 { 4 } else { 1 }
+		}
+		1 {
+			val := c.read(bus, c.ctx.addr, 0xFFFF_FFFF) or { return }
+			reg := bits.trailing_zeros_8(u8(c.ctx.val))
+			c.regs.write(u8(reg), val)
+			c.ctx.val &= ~(1 << reg)
+			c.ctx.addr += 4
+			c.regs.write(rd, c.ctx.addr)
+			if c.ctx.val == 0 {
+				c.ctx.step = 2
+			}
+		}
+		2 {
+			c.fetch(bus) or { return }
+			c.ctx.step = 0
+		}
+		else {}
+	}
+}
+
+fn (mut c Cpu) thumb_stmia(mut bus Peripherals, rd u8, rlist u8) {
+	for {
+		match c.ctx.step {
+			0 {
+				c.ctx.addr = c.regs.read(rd)
+				c.ctx.val = rlist
+				c.regs.r15 += 4
+				c.ctx.step = if rlist == 0 { 2 } else { 1 }
+			}
+			1 {
+				reg := bits.trailing_zeros_8(u8(c.ctx.val))
+				val := c.regs.read(u8(reg))
+				c.write(mut bus, c.ctx.addr, val, 0xFFFF_FFFF) or { return }
+				c.ctx.val &= ~(1 << reg)
+				c.ctx.addr += 4
+				c.regs.write(rd, c.ctx.addr)
+				if c.ctx.val == 0 {
+					c.ctx.step = 2
+				}
+				return
+			}
+			2 {
+				c.fetch(bus) or { return }
+				c.ctx.step = 0
+				return
+			}
+			else {}
+		}
+	}
+}

@@ -411,95 +411,101 @@ fn (mut c Cpu) decode_thumb(mut bus Peripherals) {
 		}
 		0b0101_00_0_0, 0b0101_00_0_1 {
 			// str
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_str_reg_offset(mut bus, 0xFFFF_FFFF, opcode.ro(), opcode.rs(), opcode.rd())
 		}
 		0b0101_00_1_0, 0b0101_00_1_1 {
 			// strh
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_str_reg_offset(mut bus, 0xFFFF, opcode.ro(), opcode.rs(), opcode.rd())
 		}
 		0b0101_01_0_0, 0b0101_01_0_1 {
 			// strb
-			panic('unimplemented instruction: ${opcode:16b}')
-		}
-		0b0101_01_1_0, 0b0101_01_1_1 {
-			// ldsb
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_str_reg_offset(mut bus, 0xFF, opcode.ro(), opcode.rs(), opcode.rd())
 		}
 		0b0101_10_0_0, 0b0101_10_0_1 {
 			// ldr
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_ldr_reg_offset(bus, 0xFFFF_FFFF, false, opcode.ro(), opcode.rs(),
+				opcode.rd())
 		}
 		0b0101_10_1_0, 0b0101_10_1_1 {
 			// ldrh
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_ldr_reg_offset(bus, 0xFFFF, false, opcode.ro(), opcode.rs(), opcode.rd())
 		}
 		0b0101_11_0_0, 0b0101_11_0_1 {
 			// ldrb
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_ldr_reg_offset(bus, 0xFF, false, opcode.ro(), opcode.rs(), opcode.rd())
 		}
 		0b0101_11_1_0, 0b0101_11_1_1 {
 			// ldsh
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_ldr_reg_offset(bus, 0xFFFF, true, opcode.ro(), opcode.rs(), opcode.rd())
+		}
+		0b0101_01_1_0, 0b0101_01_1_1 {
+			// ldsb
+			c.thumb_ldr_reg_offset(bus, 0xFF, true, opcode.ro(), opcode.rs(), opcode.rd())
 		}
 		0b011_00_000...0b011_00_111 {
 			// str with imm offset
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_str_imm_offset(mut bus, 0xFFFF_FFFF, (u8(opcode >> 6) & 0x1F) << 2,
+				opcode.rs(), opcode.rd())
 		}
 		0b011_01_000...0b011_01_111 {
 			// ldr with imm offset
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_ldr_imm_offset(bus, 0xFFFF_FFFF, (u8(opcode >> 6) & 0x1F) << 2, opcode.rs(),
+				opcode.rd())
 		}
 		0b011_10_000...0b011_10_111 {
 			// strb with imm offset
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_str_imm_offset(mut bus, 0xFF, u8(opcode >> 6) & 0x1F, opcode.rs(),
+				opcode.rd())
 		}
 		0b011_11_000...0b011_11_111 {
 			// ldrb with imm offset
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_ldr_imm_offset(bus, 0xFF, u8(opcode >> 6) & 0x1F, opcode.rs(), opcode.rd())
 		}
 		0b1000_0_000...0b1000_0_111 {
 			// strh with imm offset
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_str_imm_offset(mut bus, 0xFFFF, (u8(opcode >> 6) & 0x1F) << 1, opcode.rs(),
+				opcode.rd())
 		}
 		0b1000_1_000...0b1000_1_111 {
 			// ldrh with imm offset
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_ldr_imm_offset(bus, 0xFFFF, (u8(opcode >> 6) & 0x1F) << 1, opcode.rs(),
+				opcode.rd())
 		}
 		0b1001_0_000...0b1001_0_111 {
 			// str sp relative
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_str_sp_relative(mut bus, opcode.rd8(), u16(u8(opcode)) << 2)
 		}
 		0b1001_1_000...0b1001_1_111 {
 			// ldr sp relative
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_ldr_sp_relative(bus, opcode.rd8(), u16(u8(opcode)) << 2)
 		}
 		0b1010_0_000...0b1010_0_111 {
 			// load address from pc
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_load_pc_address(bus, opcode.rd8(), u16(u8(opcode)) << 2)
 		}
 		0b1010_1_000...0b1010_1_111 {
 			// load address from sp
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_load_sp_address(bus, opcode.rd8(), u16(u8(opcode)) << 2)
 		}
 		0b10110000 {
 			// add offset to sp
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_add_sp(bus, opcode.bit(7), (u16(opcode) & 0x7F) << 2)
 		}
 		0b1011_0_10_0, 0b1011_0_10_1 {
 			// push
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_push(mut bus, opcode.bit(8), u8(opcode))
 		}
 		0b1011_1_10_0, 0b1011_1_10_1 {
 			// pop
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_pop(bus, opcode.bit(8), u8(opcode))
 		}
 		0b1100_0_000...0b1100_0_111 {
 			// stmia
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_stmia(mut bus, opcode.rd8(), u8(opcode))
 		}
 		0b1100_1_000...0b1100_1_111 {
 			// ldmia
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_ldmia(bus, opcode.rd8(), u8(opcode))
 		}
 		0b1101_0000...0b1101_1101 {
 			// cond branch
