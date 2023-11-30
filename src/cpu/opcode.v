@@ -35,3 +35,31 @@ type ThumbOpcode = u16
 fn (o ThumbOpcode) base_opcode() u8 {
 	return u8(o >> 8)
 }
+
+fn (o ThumbOpcode) cond() u8 {
+	return u8(o >> 8) & 0xF
+}
+
+fn (o ThumbOpcode) offset() u8 {
+	return u8(o >> 6) & 0x1F
+}
+
+fn (o ThumbOpcode) rd8() u8 {
+	return u8(o >> 8) & 7
+}
+
+fn (o ThumbOpcode) ro() u8 {
+	return u8(o >> 6) & 7
+}
+
+fn (o ThumbOpcode) rs() u8 {
+	return u8(o >> 3) & 7
+}
+
+fn (o ThumbOpcode) rd() u8 {
+	return u8(o) & 7
+}
+
+fn (o ThumbOpcode) bit(number u8) bool {
+	return (o >> number) & 1 > 0
+}

@@ -4,22 +4,25 @@ import peripherals.bios { Bios }
 import peripherals.ewram { EWram }
 import peripherals.iwram { IWram }
 import peripherals.ppu { Ppu }
+import peripherals.cartridge { Cartridge }
 import cpu.interrupts { Interrupts }
 
 pub struct Peripherals {
 	bios bios.Bios
 mut:
-	ewram ewram.EWram
-	iwram iwram.IWram
+	ewram     ewram.EWram
+	iwram     iwram.IWram
+	cartridge cartridge.Cartridge
 pub mut:
 	ppu ppu.Ppu
 }
 
-pub fn Peripherals.new(b Bios) Peripherals {
+pub fn Peripherals.new(b Bios, c Cartridge) Peripherals {
 	return Peripherals{
 		bios: b
 		ewram: EWram.new()
 		iwram: IWram.new()
+		cartridge: c
 		ppu: Ppu.new()
 	}
 }
@@ -50,6 +53,7 @@ pub fn (p &Peripherals) read(addr u32, ints &Interrupts) u32 {
 				0x02 { p.ewram.read(addr) }
 				0x03 { p.iwram.read(addr) }
 				0x05...0x07 { p.ppu.read(addr) }
+				0x08...0x0F { p.cartridge.read(addr) }
 				// must be prefetched code
 				else { panic('unexpected address for peripherals: ${addr:08x}') }
 			}
@@ -77,6 +81,7 @@ pub fn (mut p Peripherals) write(addr u32, val u32, size u32, mut ints Interrupt
 				0x02 { p.ewram.write(addr, val, size) }
 				0x03 { p.iwram.write(addr, val, size) }
 				0x05...0x07 { p.ppu.write(addr, val, size) }
+				0x08...0x0F { p.cartridge.write(addr, val, size) }
 				else { panic('unexpected address for peripherals: ${addr:08x}') }
 			}
 		}

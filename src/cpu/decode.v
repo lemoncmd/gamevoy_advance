@@ -4,7 +4,7 @@ import peripherals { Peripherals }
 
 fn (mut c Cpu) decode(mut bus Peripherals) {
 	if c.regs.cpsr.get_flag(.t) {
-		c.decode_thumb()
+		c.decode_thumb(mut bus)
 		return
 	}
 	opcode := Opcode(c.ctx.opcodes[0])
@@ -324,56 +324,63 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 	// undefined exception
 }
 
-fn (mut c Cpu) decode_thumb() {
+fn (mut c Cpu) decode_thumb(mut bus Peripherals) {
 	opcode := ThumbOpcode(u16(c.ctx.opcodes[0]))
 	match opcode.base_opcode() {
 		0b000_00_000...0b000_00_111 {
 			// left shift
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_shift(bus, 0, opcode.offset(), opcode.rs(), opcode.rd())
 		}
 		0b000_01_000...0b000_01_111 {
 			// logic right shift
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_shift(bus, 1, opcode.offset(), opcode.rs(), opcode.rd())
 		}
 		0b000_10_000...0b000_10_111 {
 			// arithmetic right shift
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_shift(bus, 2, opcode.offset(), opcode.rs(), opcode.rd())
 		}
 		0b000_11_00_0, 0b000_11_00_1 {
 			// add registers
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_add(bus, 0, opcode.ro(), opcode.rs(), opcode.rd())
 		}
 		0b000_11_01_0, 0b000_11_01_1 {
 			// sub registers
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_add(bus, 1, opcode.ro(), opcode.rs(), opcode.rd())
 		}
 		0b000_11_10_0, 0b000_11_10_1 {
 			// add register and imm
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_add(bus, 2, opcode.ro(), opcode.rs(), opcode.rd())
 		}
 		0b000_11_11_0, 0b000_11_11_1 {
 			// sub register and imm
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_add(bus, 3, opcode.ro(), opcode.rs(), opcode.rd())
 		}
 		0b001_00_000...0b001_00_111 {
 			// mov imm
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_arith_imm(bus, 0, opcode.rd8(), u8(opcode))
 		}
 		0b001_01_000...0b001_01_111 {
 			// cmp register and imm
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_arith_imm(bus, 1, opcode.rd8(), u8(opcode))
 		}
 		0b001_10_000...0b001_10_111 {
 			// add imm to register
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_arith_imm(bus, 2, opcode.rd8(), u8(opcode))
 		}
 		0b001_11_000...0b001_11_111 {
 			// sub imm to register
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_arith_imm(bus, 3, opcode.rd8(), u8(opcode))
 		}
 		0b010000_00...0b010000_11 {
 			// alu op
-			panic('unimplemented instruction: ${opcode:16b}')
+			op := u8(opcode >> 6) & 0xF
+			match op {
+				0x0, 0x1, 0x8, 0xC, 0xE, 0xF { c.thumb_arith_logic(bus, op, opcode.rs(),
+						opcode.rd()) }
+				0x2, 0x3, 0x4, 0x7 { c.thumb_arith_shift(bus, op, opcode.rs(), opcode.rd()) }
+				0x5, 0x6, 0x9, 0xA, 0xB { c.thumb_arith_add(bus, op, opcode.rs(), opcode.rd()) }
+				else { c.thumb_mul(bus, op, opcode.rs(), opcode.rd()) }
+			}
 		}
 		0b010001_00 {
 			// add register to register

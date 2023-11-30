@@ -4,6 +4,7 @@ import gg { Context }
 import cpu { Cpu }
 import peripherals { Peripherals }
 import peripherals.bios { Bios }
+import peripherals.cartridge { Cartridge }
 
 pub struct Gameboy {
 mut:
@@ -13,10 +14,10 @@ mut:
 	image_idx   int
 }
 
-pub fn Gameboy.new(b Bios) &Gameboy {
+pub fn Gameboy.new(b Bios, c Cartridge) &Gameboy {
 	mut ret := &Gameboy{
 		cpu: Cpu.new()
-		peripherals: Peripherals.new(b)
+		peripherals: Peripherals.new(b, c)
 	}
 	ret.cpu.init(ret.peripherals)
 	ret.init_gg()
