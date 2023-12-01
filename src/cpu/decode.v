@@ -509,27 +509,23 @@ fn (mut c Cpu) decode_thumb(mut bus Peripherals) {
 		}
 		0b1101_0000...0b1101_1101 {
 			// cond branch
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.b(bus, u8(opcode >> 8) & 0xF, u32(i32(i8(opcode))) << 1)
 		}
 		0b1101_1111 {
 			// swi
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_swi(bus)
 		}
 		0b11100_000...0b11100_111 {
 			// b label
-			panic('unimplemented instruction: ${opcode:16b}')
-		}
-		0b11101_000...0b11101_111 {
-			// blx label
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.b(bus, 0xE, u32(i32(i16(opcode << 5)) >> 4))
 		}
 		0b11110_000...0b11110_111 {
 			// load lr
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_load_lr_high(bus, u16(opcode) & 0x7FF)
 		}
 		0b11111_000...0b11111_111 {
 			// bl label
-			panic('unimplemented instruction: ${opcode:16b}')
+			c.thumb_bl(bus, u16(opcode) & 0x7FF)
 		}
 		else {}
 	}

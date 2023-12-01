@@ -265,14 +265,14 @@ fn (mut c Cpu) thumb_hi_reg(bus &Peripherals, op u8, msbd bool, msbs bool, rs_ u
 			}
 			1 {
 				size := if c.ctx.val == 2 { u32(0xFFFF) } else { 0xFFFF_FFFF }
-				val := c.read(bus, c.regs.r15, size) or { return }
+				val := c.read(bus, c.regs.r15, size) or { return } & size
 				c.ctx.opcodes[1] = val
 				c.ctx.step = 2
 				return
 			}
 			2 {
 				size := if c.ctx.val == 2 { u32(0xFFFF) } else { 0xFFFF_FFFF }
-				val := c.read(bus, c.regs.r15 + c.ctx.val, size) or { return }
+				val := c.read(bus, c.regs.r15 + c.ctx.val, size) or { return } & size
 				c.ctx.opcodes[2] = val
 				c.regs.r15 += c.ctx.val << 1
 				c.ctx.step = 3
@@ -343,9 +343,9 @@ fn (mut c Cpu) thumb_ldr_reg_offset(bus &Peripherals, size u32, signed bool, ro 
 			mut val := c.read(bus, c.ctx.addr, size) or { return } & size
 			if signed {
 				if size == 0xFF {
-					val = u32(i32(val << 24) >> 24)
+					val = u32(i32(i8(val)))
 				} else {
-					val = u32(i32(val << 16) >> 16)
+					val = u32(i32(i16(val)))
 				}
 			}
 			c.regs.write(rd, val)
@@ -506,7 +506,7 @@ fn (mut c Cpu) thumb_pop(bus &Peripherals, pop_pc bool, rlist_ u8) {
 		0 {
 			c.ctx.addr = c.regs.read(13)
 			c.ctx.val = rlist
-			c.regs.r15 += 4
+			c.regs.r15 += 2
 			c.ctx.step = if rlist == 0 { 4 } else { 1 }
 		}
 		1 {
@@ -526,9 +526,9 @@ fn (mut c Cpu) thumb_pop(bus &Peripherals, pop_pc bool, rlist_ u8) {
 			c.ctx.step = 3
 		}
 		3 {
-			val := c.read(bus, c.regs.r15 + 4, 0xFFFF_FFFF) or { return }
+			val := c.read(bus, c.regs.r15 + 2, 0xFFFF_FFFF) or { return }
 			c.ctx.opcodes[2] = val
-			c.regs.r15 += 8
+			c.regs.r15 += 2
 			c.ctx.step = 4
 		}
 		4 {
@@ -550,7 +550,7 @@ fn (mut c Cpu) thumb_push(mut bus Peripherals, push_lr bool, rlist_ u8) {
 					c.regs.write(13, c.ctx.addr)
 				}
 				c.ctx.val = rlist
-				c.regs.r15 += 4
+				c.regs.r15 += 2
 				c.ctx.step = if rlist == 0 { 2 } else { 1 }
 			}
 			1 {
@@ -582,8 +582,8 @@ fn (mut c Cpu) thumb_ldmia(bus &Peripherals, rd u8, rlist u8) {
 		0 {
 			c.ctx.addr = c.regs.read(rd)
 			c.ctx.val = rlist
-			c.regs.r15 += 4
-			c.ctx.step = if rlist == 0 { 4 } else { 1 }
+			c.regs.r15 += 2
+			c.ctx.step = if rlist == 0 { 2 } else { 1 }
 		}
 		1 {
 			val := c.read(bus, c.ctx.addr, 0xFFFF_FFFF) or { return }
@@ -610,7 +610,7 @@ fn (mut c Cpu) thumb_stmia(mut bus Peripherals, rd u8, rlist u8) {
 			0 {
 				c.ctx.addr = c.regs.read(rd)
 				c.ctx.val = rlist
-				c.regs.r15 += 4
+				c.regs.r15 += 2
 				c.ctx.step = if rlist == 0 { 2 } else { 1 }
 			}
 			1 {
@@ -632,5 +632,74 @@ fn (mut c Cpu) thumb_stmia(mut bus Peripherals, rd u8, rlist u8) {
 			}
 			else {}
 		}
+	}
+}
+
+fn (mut c Cpu) thumb_swi(bus &Peripherals) {
+	vector_pc := u32(0x08)
+	match c.ctx.step {
+		0 {
+			val := c.read(bus, vector_pc, 0xFFFF_FFFF) or { return }
+			c.ctx.opcodes[1] = val
+			old_cpsr := c.regs.cpsr
+			c.regs.cpsr.set_mode(.supervisor)
+			c.regs.write(0xE, c.regs.r15 - 2)
+			c.regs.write_spsr(old_cpsr)
+			c.regs.cpsr.set_flag(.t, false)
+			c.regs.cpsr.set_flag(.i, true)
+			c.regs.r15 = vector_pc + 8
+			c.ctx.step = 1
+		}
+		1 {
+			val := c.read(bus, vector_pc + 4, 0xFFFF_FFFF) or { return }
+			c.ctx.opcodes[2] = val
+			c.ctx.step = 2
+		}
+		2 {
+			c.fetch(bus) or { return }
+			c.ctx.step = 0
+		}
+		else {}
+	}
+}
+
+fn (mut c Cpu) thumb_load_lr_high(bus &Peripherals, offset u16) {
+	for {
+		match c.ctx.step {
+			0 {
+				c.regs.write(14, c.regs.r15 + u32(offset) << 12)
+				c.regs.r15 += 2
+				c.ctx.step = 1
+			}
+			1 {
+				c.fetch(bus) or { return }
+				c.ctx.step = 0
+				return
+			}
+			else {}
+		}
+	}
+}
+
+fn (mut c Cpu) thumb_bl(bus &Peripherals, offset u16) {
+	base_pc := c.regs.read(14) + offset << 1
+	match c.ctx.step {
+		0 {
+			val := c.read(bus, base_pc, 0xFFFF_FFFF) or { return }
+			c.ctx.opcodes[1] = val
+			c.ctx.step = 1
+		}
+		1 {
+			val := c.read(bus, base_pc + 2, 0xFFFF_FFFF) or { return }
+			c.ctx.opcodes[2] = val
+			c.regs.write(14, c.regs.r15 - 2)
+			c.regs.r15 = base_pc + 4
+			c.ctx.step = 2
+		}
+		2 {
+			c.fetch(bus) or { return }
+			c.ctx.step = 0
+		}
+		else {}
 	}
 }
