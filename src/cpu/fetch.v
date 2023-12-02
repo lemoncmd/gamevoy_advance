@@ -9,9 +9,11 @@ fn (mut c Cpu) fetch(bus &Peripherals) ? {
 		return none
 	}
 	c.interrupts.halt = false
-	size := u32(if c.regs.cpsr.get_flag(.t) { 0xFFFF } else { 0xFFFF_FFFF })
+	is_thumb := c.regs.cpsr.get_flag(.t)
+	size := u32(if is_thumb { 0xFFFF } else { 0xFFFF_FFFF })
 	val := c.read(bus, c.regs.r15, size) or { return none } & size
 	c.ctx.opcodes = [c.ctx.opcodes[1], c.ctx.opcodes[2], val]!
 	in_int := has_int && !c.regs.cpsr.get_flag(.i) && c.interrupts.ime
 	c.ctx.in_int = in_int
+	c.ctx.is_thumb = is_thumb
 }

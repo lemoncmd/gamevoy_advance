@@ -13,6 +13,7 @@ mut:
 	addr       u32
 	val        u32
 	in_int     bool
+	is_thumb   bool
 }
 
 pub struct Cpu {
@@ -34,7 +35,8 @@ pub fn (mut c Cpu) init(bus &Peripherals) {
 }
 
 pub fn (mut c Cpu) emulate_cycle(mut bus Peripherals) {
-	// if c.ctx.step == 0 {println('${c.regs.cpsr.get_flag(.t)}pc:${c.regs.r15:08x} ${c.ctx.opcodes[0]:08x}')}
+	// if c.ctx.step == 0 {println('${if c.regs.cpsr.get_flag(.t){'t'}else{'a'}}pc:${c.regs.r15:08x} ${c.ctx.opcodes[0]:08x} ${c.regs.read(7)}')}
+	// if c.ctx.step == 0 { print('\r${c.interrupts.int_enable}') }
 	// flush_stdout()
 	// println('${c.ctx.opcodes[0]:08x}, ${c.ctx.opcodes[1]:08x}, ${c.ctx.opcodes[2]:08x}')
 	/*

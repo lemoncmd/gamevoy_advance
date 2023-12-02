@@ -3,7 +3,7 @@ module cpu
 import peripherals { Peripherals }
 
 fn (mut c Cpu) decode(mut bus Peripherals) {
-	if c.regs.cpsr.get_flag(.t) {
+	if c.ctx.is_thumb {
 		c.decode_thumb(mut bus)
 		return
 	}
@@ -14,7 +14,8 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 		// data processing / psr transfer
 		0b00010_00_0_0000 {
 			// mrs cpsr
-			panic('unimplemented instruction: ${opcode:08x}')
+			c.mrs_cpsr(bus, opcode.cond(), opcode.rd())
+			return
 		}
 		0b00010_01_0_0000, 0b00110_01_0_0000...0b00110_01_0_1111 {
 			// msr cpsr
@@ -24,7 +25,8 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 		}
 		0b00010_10_0_0000 {
 			// mrs spsr
-			panic('unimplemented instruction: ${opcode:08x}')
+			c.mrs_spsr(bus, opcode.cond(), opcode.rd())
+			return
 		}
 		0b00010_11_0_0000, 0b00110_11_0_0000...0b00110_11_0_1111 {
 			// msr spsr
@@ -48,7 +50,9 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 		}
 		0b000_0001_0_1001, 0b000_0001_1_1001 {
 			// mla
-			panic('unimplemented instruction: ${opcode:08x}')
+			c.mla(bus, opcode.cond(), opcode.bit(20), opcode.rn(), opcode.rd(), opcode.rs(),
+				opcode.rm())
+			return
 		}
 		0b000_0100_0_1001, 0b000_0100_1_1001 {
 			// umull
@@ -92,7 +96,10 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 					goto unusual_word
 				}
 			}
-			panic('unimplemented instruction: ${opcode:08x}')
+			op2, is_rs, carry := c.calc_alu_op2(opcode)
+			c.eor(bus, opcode.cond(), opcode.bit(20), opcode.rn(), opcode.rd(), op2, is_rs,
+				carry)
+			return
 		}
 		0b00_0_0010_0_0000...0b00_0_0010_1_1111, 0b00_1_0010_0_0000...0b00_1_0010_1_1111 {
 			// sub
@@ -134,7 +141,9 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 					goto unusual_word
 				}
 			}
-			panic('unimplemented instruction: ${opcode:08x}')
+			op2, is_rs, _ := c.calc_alu_op2(opcode)
+			c.adc(bus, opcode.cond(), opcode.bit(20), opcode.rn(), opcode.rd(), op2, is_rs)
+			return
 		}
 		0b00_0_0110_0_0000...0b00_0_0110_1_1111, 0b00_1_0110_0_0000...0b00_1_0110_1_1111 {
 			// sbc
@@ -279,7 +288,7 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 		}
 		0b1111_0000_0000...0b1111_1111_1111 {
 			// swx
-			panic('unimplemented instruction: ${opcode:08x}')
+			c.swi(bus, opcode.cond())
 		}
 		else {
 			unusual_word:
@@ -509,7 +518,7 @@ fn (mut c Cpu) decode_thumb(mut bus Peripherals) {
 		}
 		0b1101_0000...0b1101_1101 {
 			// cond branch
-			c.b(bus, u8(opcode >> 8) & 0xF, u32(i32(i8(opcode))) << 1)
+			c.thumb_b(bus, u8(opcode >> 8) & 0xF, u32(i32(i8(opcode))) << 1)
 		}
 		0b1101_1111 {
 			// swi
@@ -517,7 +526,7 @@ fn (mut c Cpu) decode_thumb(mut bus Peripherals) {
 		}
 		0b11100_000...0b11100_111 {
 			// b label
-			c.b(bus, 0xE, u32(i32(i16(opcode << 5)) >> 4))
+			c.thumb_b(bus, 0xE, u32(i32(i16(opcode << 5)) >> 4))
 		}
 		0b11110_000...0b11110_111 {
 			// load lr

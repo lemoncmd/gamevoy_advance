@@ -20,6 +20,25 @@ fn (mut c Cpu) check_cond(bus &Peripherals, cond u8) ? {
 	}
 }
 
+fn (mut c Cpu) mrs_cpsr(bus &Peripherals, cond u8, rd u8) {
+	c.check_cond(bus, cond) or { return }
+	for {
+		match c.ctx.step {
+			0 {
+				c.regs.write(rd, c.regs.cpsr)
+				c.regs.r15 += 4
+				c.ctx.step = 1
+			}
+			1 {
+				c.fetch(bus) or { return }
+				c.ctx.step = 0
+				return
+			}
+			else {}
+		}
+	}
+}
+
 fn (mut c Cpu) msr_cpsr(bus &Peripherals, cond u8, write_f bool, write_c bool, rd u8, val u32) {
 	c.check_cond(bus, cond) or { return }
 	for {
@@ -42,6 +61,25 @@ fn (mut c Cpu) msr_cpsr(bus &Peripherals, cond u8, write_f bool, write_c bool, r
 			}
 			1 {
 				c.fetch(bus)
+				c.ctx.step = 0
+				return
+			}
+			else {}
+		}
+	}
+}
+
+fn (mut c Cpu) mrs_spsr(bus &Peripherals, cond u8, rd u8) {
+	c.check_cond(bus, cond) or { return }
+	for {
+		match c.ctx.step {
+			0 {
+				c.regs.write(rd, c.regs.read_spsr())
+				c.regs.r15 += 4
+				c.ctx.step = 1
+			}
+			1 {
+				c.fetch(bus) or { return }
 				c.ctx.step = 0
 				return
 			}
@@ -80,6 +118,43 @@ fn (mut c Cpu) msr_spsr(bus &Peripherals, cond u8, write_f bool, write_c bool, r
 	}
 }
 
+fn (mut c Cpu) mla(bus &Peripherals, cond u8, s bool, rd u8, rn u8, rs u8, rm u8) {
+	c.check_cond(bus, cond) or { return }
+	match c.ctx.step {
+		0 {
+			rm_val := c.regs.read(rm)
+			rs_val := c.regs.read(rs)
+			rn_val := c.regs.read(rn)
+			val := rm_val * rs_val + rn_val
+			if s {
+				c.regs.write(rd, val)
+				c.regs.cpsr.set_flag(.c, false)
+				c.regs.cpsr.set_flag(.z, val == 0)
+				c.regs.cpsr.set_flag(.n, val >> 31 > 0)
+			}
+			c.ctx.val = match rs_val >> 8 {
+				0xFFFFFF { 1 }
+				0xFFFF00...0xFFFFFE { 2 }
+				0xFF0000...0xFFFEFF { 3 }
+				else { 4 }
+			}
+			c.regs.r15 += 4
+			c.ctx.step = 1
+		}
+		1 {
+			c.ctx.val--
+			if c.ctx.val == 0 {
+				c.ctx.step = 2
+			}
+		}
+		2 {
+			c.fetch(bus) or { return }
+			c.ctx.step = 0
+		}
+		else {}
+	}
+}
+
 fn (mut c Cpu) bx(bus &Peripherals, cond u8, rn u8) {
 	c.check_cond(bus, cond) or { return }
 	rn_val := c.regs.read(rn)
@@ -112,8 +187,60 @@ fn (mut c Cpu) and(bus &Peripherals, cond u8, s bool, rn u8, rd u8, op2 u32, is_
 	for {
 		match c.ctx.step {
 			0 {
-				c.regs.r15 += 4
 				result := c.regs.read(rn) & op2
+				c.regs.r15 += 4
+				c.regs.write(rd, result)
+				if s {
+					if rd == 0xF {
+						c.regs.cpsr = c.regs.read_spsr()
+					} else {
+						if ca := carry {
+							c.regs.cpsr.set_flag(.c, ca)
+						}
+						c.regs.cpsr.set_flag(.z, result == 0)
+						c.regs.cpsr.set_flag(.n, result >> 31 > 0)
+					}
+				}
+				c.ctx.step = if rd == 0xF { 1 } else { 3 }
+				if is_rs {
+					return
+				}
+			}
+			1 {
+				size := if c.regs.cpsr.get_flag(.t) { u32(0xFFFF) } else { 0xFFFF_FFFF }
+				val := c.read(bus, c.regs.r15, size) or { return } & size
+				c.ctx.opcodes[1] = val
+				c.ctx.step = 2
+				return
+			}
+			2 {
+				size := if c.regs.cpsr.get_flag(.t) { u32(0xFFFF) } else { 0xFFFF_FFFF }
+				step := if c.regs.cpsr.get_flag(.t) { u32(2) } else { 4 }
+				val := c.read(bus, c.regs.r15 + step, size) or { return } & size
+				c.ctx.opcodes[2] = val
+				c.regs.r15 += step * 2
+				c.ctx.step = 3
+				return
+			}
+			3 {
+				c.fetch(bus) or { return }
+				c.ctx.step = 0
+				return
+			}
+			else {
+				return
+			}
+		}
+	}
+}
+
+fn (mut c Cpu) eor(bus &Peripherals, cond u8, s bool, rn u8, rd u8, op2 u32, is_rs bool, carry ?bool) {
+	c.check_cond(bus, cond) or { return }
+	for {
+		match c.ctx.step {
+			0 {
+				result := c.regs.read(rn) | op2
+				c.regs.r15 += 4
 				c.regs.write(rd, result)
 				if s {
 					if rd == 0xF {
@@ -164,9 +291,9 @@ fn (mut c Cpu) sub(bus &Peripherals, cond u8, s bool, rn u8, rd u8, op2 u32, is_
 	for {
 		match c.ctx.step {
 			0 {
-				c.regs.r15 += 4
 				rn_val := c.regs.read(rn)
 				result, carry := bits.sub_32(rn_val, op2, 0)
+				c.regs.r15 += 4
 				c.regs.write(rd, result)
 				if s {
 					if rd == 0xF {
@@ -216,9 +343,9 @@ fn (mut c Cpu) rsb(bus &Peripherals, cond u8, s bool, rn u8, rd u8, op2 u32, is_
 	for {
 		match c.ctx.step {
 			0 {
-				c.regs.r15 += 4
 				rn_val := c.regs.read(rn)
 				result, carry := bits.sub_32(op2, rn_val, 0)
+				c.regs.r15 += 4
 				c.regs.write(rd, result)
 				if s {
 					if rd == 0xF {
@@ -268,9 +395,9 @@ fn (mut c Cpu) add(bus &Peripherals, cond u8, s bool, rn u8, rd u8, op2 u32, is_
 	for {
 		match c.ctx.step {
 			0 {
-				c.regs.r15 += 4
 				rn_val := c.regs.read(rn)
 				result, carry := bits.add_32(rn_val, op2, 0)
+				c.regs.r15 += 4
 				c.regs.write(rd, result)
 				if s {
 					if rd == 0xF {
@@ -315,12 +442,64 @@ fn (mut c Cpu) add(bus &Peripherals, cond u8, s bool, rn u8, rd u8, op2 u32, is_
 	}
 }
 
+fn (mut c Cpu) adc(bus &Peripherals, cond u8, s bool, rn u8, rd u8, op2 u32, is_rs bool) {
+	c.check_cond(bus, cond) or { return }
+	for {
+		match c.ctx.step {
+			0 {
+				rn_val := c.regs.read(rn)
+				carry_in := u32(c.regs.cpsr.get_flag(.c))
+				result, carry := bits.add_32(rn_val, op2, carry_in)
+				c.regs.r15 += 4
+				c.regs.write(rd, result)
+				if s {
+					if rd == 0xF {
+						c.regs.cpsr = c.regs.read_spsr()
+					} else {
+						c.regs.cpsr.set_flag(.v, (~(rn_val ^ (op2 + carry_in)) & (rn_val ^ result)) >> 31 > 0)
+						c.regs.cpsr.set_flag(.c, carry > 0)
+						c.regs.cpsr.set_flag(.z, result == 0)
+						c.regs.cpsr.set_flag(.n, result >> 31 > 0)
+					}
+				}
+				c.ctx.step = if rd == 0xF { 1 } else { 3 }
+				if is_rs {
+					return
+				}
+			}
+			1 {
+				size := if c.regs.cpsr.get_flag(.t) { u32(0xFFFF) } else { 0xFFFF_FFFF }
+				val := c.read(bus, c.regs.r15, size) or { return } & size
+				c.ctx.opcodes[1] = val
+				c.ctx.step = 2
+				return
+			}
+			2 {
+				size := if c.regs.cpsr.get_flag(.t) { u32(0xFFFF) } else { 0xFFFF_FFFF }
+				step := if c.regs.cpsr.get_flag(.t) { u32(2) } else { 4 }
+				val := c.read(bus, c.regs.r15 + step, size) or { return } & size
+				c.ctx.opcodes[2] = val
+				c.regs.r15 += step * 2
+				c.ctx.step = 3
+				return
+			}
+			3 {
+				c.fetch(bus) or { return }
+				c.ctx.step = 0
+				return
+			}
+			else {
+				return
+			}
+		}
+	}
+}
+
 fn (mut c Cpu) tst(bus &Peripherals, cond u8, rn u8, op2 u32, is_rs bool, carry ?bool) {
 	c.check_cond(bus, cond) or { return }
 	for {
 		match c.ctx.step {
 			0 {
-				c.regs.r15 += 4
 				result := c.regs.read(rn) & op2
 				if ca := carry {
 					c.regs.cpsr.set_flag(.c, ca)
@@ -328,6 +507,7 @@ fn (mut c Cpu) tst(bus &Peripherals, cond u8, rn u8, op2 u32, is_rs bool, carry 
 				c.regs.cpsr.set_flag(.z, result == 0)
 				c.regs.cpsr.set_flag(.n, result >> 31 > 0)
 				c.ctx.step = 1
+				c.regs.r15 += 4
 				if is_rs {
 					return
 				}
@@ -349,7 +529,6 @@ fn (mut c Cpu) cmp(bus &Peripherals, cond u8, rn u8, op2 u32, is_rs bool) {
 	for {
 		match c.ctx.step {
 			0 {
-				c.regs.r15 += 4
 				rn_val := c.regs.read(rn)
 				result, carry := bits.sub_32(rn_val, op2, 0)
 				c.regs.cpsr.set_flag(.v, ((rn_val ^ op2) & (rn_val ^ result)) >> 31 > 0)
@@ -357,6 +536,7 @@ fn (mut c Cpu) cmp(bus &Peripherals, cond u8, rn u8, op2 u32, is_rs bool) {
 				c.regs.cpsr.set_flag(.z, result == 0)
 				c.regs.cpsr.set_flag(.n, result >> 31 > 0)
 				c.ctx.step = 1
+				c.regs.r15 += 4
 				if is_rs {
 					return
 				}
@@ -378,8 +558,8 @@ fn (mut c Cpu) orr(bus &Peripherals, cond u8, s bool, rn u8, rd u8, op2 u32, is_
 	for {
 		match c.ctx.step {
 			0 {
-				c.regs.r15 += 4
 				result := c.regs.read(rn) | op2
+				c.regs.r15 += 4
 				c.regs.write(rd, result)
 				if s {
 					if rd == 0xF {
@@ -481,8 +661,8 @@ fn (mut c Cpu) bic(bus &Peripherals, cond u8, s bool, rn u8, rd u8, op2 u32, is_
 	for {
 		match c.ctx.step {
 			0 {
-				c.regs.r15 += 4
 				result := c.regs.read(rn) & ~op2
+				c.regs.r15 += 4
 				c.regs.write(rd, result)
 				if s {
 					if rd == 0xF {
@@ -868,17 +1048,17 @@ fn (mut c Cpu) stm(mut bus Peripherals, cond u8, is_pre bool, is_up bool, s bool
 fn (mut c Cpu) b(bus &Peripherals, cond u8, offset u32) {
 	c.check_cond(bus, cond) or { return }
 	base_pc := c.regs.r15 + offset
-	step := if c.regs.cpsr.get_flag(.t) { u32(2) } else { 4 }
+	size := u32(0xFFFF_FFFF)
 	match c.ctx.step {
 		0 {
-			val := c.read(bus, base_pc, 0xFFFF_FFFF) or { return }
+			val := c.read(bus, base_pc, size) or { return } & size
 			c.ctx.opcodes[1] = val
 			c.ctx.step = 1
 		}
 		1 {
-			val := c.read(bus, base_pc + step, 0xFFFF_FFFF) or { return }
+			val := c.read(bus, base_pc + 4, size) or { return } & size
 			c.ctx.opcodes[2] = val
-			c.regs.r15 = base_pc + step * 2
+			c.regs.r15 = base_pc + 8
 			c.ctx.step = 2
 		}
 		2 {
@@ -903,6 +1083,34 @@ fn (mut c Cpu) bl(bus &Peripherals, cond u8, offset u32) {
 			c.ctx.opcodes[2] = val
 			c.regs.write(14, c.regs.r15 - 4)
 			c.regs.r15 = base_pc + 8
+			c.ctx.step = 2
+		}
+		2 {
+			c.fetch(bus) or { return }
+			c.ctx.step = 0
+		}
+		else {}
+	}
+}
+
+fn (mut c Cpu) swi(bus &Peripherals, cond u8) {
+	c.check_cond(bus, cond) or { return }
+	vector_pc := u32(0x08)
+	match c.ctx.step {
+		0 {
+			val := c.read(bus, vector_pc, 0xFFFF_FFFF) or { return }
+			c.ctx.opcodes[1] = val
+			old_cpsr := c.regs.cpsr
+			c.regs.cpsr.set_mode(.supervisor)
+			c.regs.write(0xE, c.regs.r15 - 4)
+			c.regs.write_spsr(old_cpsr)
+			c.regs.cpsr.set_flag(.i, true)
+			c.regs.r15 = vector_pc + 8
+			c.ctx.step = 1
+		}
+		1 {
+			val := c.read(bus, vector_pc + 4, 0xFFFF_FFFF) or { return }
+			c.ctx.opcodes[2] = val
 			c.ctx.step = 2
 		}
 		2 {

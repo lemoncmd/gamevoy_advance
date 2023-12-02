@@ -327,6 +327,9 @@ fn (mut p Ppu) check_lyc_eq_ly(mut ints Interrupts) {
 
 pub fn (mut p Ppu) emulate_cycle(mut ints Interrupts) bool {
 	mut dispstat := DispStat.from(p.dispstat)
+	defer {
+		p.dispstat = u16(dispstat)
+	}
 	p.cycle++
 	match p.cycle {
 		960 {

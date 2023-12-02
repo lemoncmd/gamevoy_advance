@@ -1,23 +1,43 @@
 module cpu
 
 import math.bits
+import util
 import peripherals { Peripherals }
+
+fn (mut c Cpu) thumb_check_cond(bus &Peripherals, cond u8) ? {
+	if !c.cond(cond) {
+		match c.ctx.step {
+			0 {
+				c.regs.r15 += 2
+				c.ctx.step = 1
+			}
+			1 {
+				c.fetch(bus)
+				c.ctx.step = 0
+			}
+			else {}
+		}
+		return none
+	}
+}
 
 fn (mut c Cpu) thumb_shift(bus &Peripherals, op u8, offset u8, rs u8, rd u8) {
 	for {
 		match c.ctx.step {
 			0 {
 				rs_val := c.regs.read(rs)
-				offset2 := if offset == 0 { 32 } else { offset }
+				offset2 := if offset == 0 { u32(32) } else { offset }
 				val, carry := match op {
-					0 { rs_val << offset, (rs_val >> (32 - offset)) & 1 > 0 }
-					1 { rs_val >> offset2, (rs_val >> (offset2 - 1)) & 1 > 0 }
-					2 { u32(i32(rs_val) >> offset2), (rs_val >> (offset2 - 1)) & 1 > 0 }
+					0 { util.lsl(rs_val, offset) }
+					1 { util.lsr(rs_val, offset2) }
+					2 { util.asr(rs_val, offset2) }
 					else { panic('unreachable') }
 				}
 				c.regs.write(rs, val)
 				if op != 0 || offset != 0 {
-					c.regs.cpsr.set_flag(.c, carry)
+					if ca := carry {
+						c.regs.cpsr.set_flag(.c, ca)
+					}
 				}
 				c.regs.cpsr.set_flag(.z, val == 0)
 				c.regs.cpsr.set_flag(.n, val >> 31 > 0)
@@ -42,9 +62,13 @@ fn (mut c Cpu) thumb_add(bus &Peripherals, op u8, rn_or_imm u8, rs u8, rd u8) {
 				op2 := if op & 2 > 0 { u32(rn_or_imm) } else { c.regs.read(rn_or_imm) }
 				rev_op2 := if op & 1 > 0 { -op2 } else { op2 }
 				result, carry := bits.add_32(rs_val, rev_op2, 0)
-				c.regs.write(rs, result)
+				c.regs.write(rd, result)
 				c.regs.cpsr.set_flag(.v, (~(rs_val ^ rev_op2) & (rs_val ^ result)) >> 31 > 0)
-				c.regs.cpsr.set_flag(.c, if op & 1 > 0 { carry == 0 } else { carry > 0 })
+				c.regs.cpsr.set_flag(.c, if op & 1 > 0 {
+					carry > 0 || rev_op2 == 0
+				} else {
+					carry > 0
+				})
 				c.regs.cpsr.set_flag(.z, result == 0)
 				c.regs.cpsr.set_flag(.n, result >> 31 > 0)
 				c.regs.r15 += 2
@@ -65,7 +89,7 @@ fn (mut c Cpu) thumb_arith_imm(bus &Peripherals, op u8, rd u8, imm u8) {
 		match c.ctx.step {
 			0 {
 				rd_val := c.regs.read(rd)
-				rev_op2 := if op & 1 > 0 { -imm } else { imm }
+				rev_op2 := if op & 1 > 0 { -u32(imm) } else { u32(imm) }
 				result, carry := bits.add_32(rd_val, rev_op2, 0)
 				match op {
 					0 { c.regs.write(rd, imm) }
@@ -77,7 +101,11 @@ fn (mut c Cpu) thumb_arith_imm(bus &Peripherals, op u8, rd u8, imm u8) {
 					c.regs.cpsr.set_flag(.n, false)
 				} else {
 					c.regs.cpsr.set_flag(.v, (~(rd_val ^ rev_op2) & (rd_val ^ result)) >> 31 > 0)
-					c.regs.cpsr.set_flag(.c, if op & 1 > 0 { carry == 0 } else { carry > 0 })
+					c.regs.cpsr.set_flag(.c, if op & 1 > 0 {
+						carry > 0 || rev_op2 == 0
+					} else {
+						carry > 0
+					})
 					c.regs.cpsr.set_flag(.z, result == 0)
 					c.regs.cpsr.set_flag(.n, result >> 31 > 0)
 				}
@@ -131,23 +159,18 @@ fn (mut c Cpu) thumb_arith_shift(bus &Peripherals, op u8, rs u8, rd u8) {
 		0 {
 			rd_val := c.regs.read(rd)
 			rs_val := c.regs.read(rs) & 0xFF
-			val := match op {
-				2 { rd_val << rs_val }
-				3 { rd_val >> rs_val }
-				4 { u32(i32(rd_val) >> rs_val) }
-				7 { rd_val >> (rs_val & 0x1F) | rd_val << (32 - (rs_val & 0x1F)) }
-				else { panic('unreachable') }
-			}
-			carry := match op {
-				2 { (rd_val >> (32 - rs_val)) & 1 > 0 }
-				3 { (rd_val >> (1 - rs_val)) & 1 > 0 }
-				4 { (rd_val >> (1 - rs_val)) & 1 > 0 }
-				7 { val >> 31 > 0 }
+			val, carry := match op {
+				2 { util.lsl(rd_val, rs_val) }
+				3 { util.lsr(rd_val, rs_val) }
+				4 { util.asr(rd_val, rs_val) }
+				7 { util.ror(rd_val, rs_val) }
 				else { panic('unreachable') }
 			}
 			c.regs.write(rd, val)
 			if rs_val != 0 {
-				c.regs.cpsr.set_flag(.c, carry)
+				if ca := carry {
+					c.regs.cpsr.set_flag(.c, ca)
+				}
 			}
 			c.regs.cpsr.set_flag(.z, val == 0)
 			c.regs.cpsr.set_flag(.n, val >> 31 > 0)
@@ -173,13 +196,13 @@ fn (mut c Cpu) thumb_mul(bus &Peripherals, op u8, rs u8, rd u8) {
 			c.regs.cpsr.set_flag(.z, val == 0)
 			c.regs.cpsr.set_flag(.n, val >> 31 > 0)
 			c.ctx.val = match rd_val >> 8 {
-				0xFFFFFF { 1 }
-				0xFFFF00...0xFFFFFE { 2 }
-				0xFF0000...0xFFFEFF { 3 }
-				else { 4 }
+				0xFFFFFF { 0 }
+				0xFFFF00...0xFFFFFE { 1 }
+				0xFF0000...0xFFFEFF { 2 }
+				else { 3 }
 			}
 			c.regs.r15 += 2
-			c.ctx.step = 1
+			c.ctx.step = if c.ctx.val == 0 { 2 } else { 1 }
 		}
 		1 {
 			c.ctx.val--
@@ -202,17 +225,21 @@ fn (mut c Cpu) thumb_arith_add(bus &Peripherals, op u8, rs u8, rd u8) {
 				rd_val := if op != 9 { c.regs.read(rd) } else { 0 }
 				rs_val := c.regs.read(rs)
 				op2 := if op in [0x5, 0xB] { rs_val } else { -rs_val }
-				carry_in := u32(match op {
-					5 { c.regs.cpsr.get_flag(.c) }
-					6 { !c.regs.cpsr.get_flag(.c) }
-					else { false }
-				})
+				carry_in := match op {
+					5 { u32(c.regs.cpsr.get_flag(.c)) }
+					6 { -u32(!c.regs.cpsr.get_flag(.c)) }
+					else { 0 }
+				}
 				result, carry := bits.add_32(rd_val, op2, carry_in)
 				if op !in [0xA, 0xB] {
 					c.regs.write(rd, result)
 				}
 				c.regs.cpsr.set_flag(.v, (~(rd_val ^ op2) & (rd_val ^ result)) >> 31 > 0)
-				c.regs.cpsr.set_flag(.c, if op in [0x5, 0xB] { carry > 0 } else { carry == 0 })
+				c.regs.cpsr.set_flag(.c, if op in [0x5, 0xB] {
+					carry > 0
+				} else {
+					carry > 0 || (op2 - carry_in) == 0
+				})
 				c.regs.cpsr.set_flag(.z, result == 0)
 				c.regs.cpsr.set_flag(.n, result >> 31 > 0)
 				c.regs.r15 += 2
@@ -234,6 +261,8 @@ fn (mut c Cpu) thumb_hi_reg(bus &Peripherals, op u8, msbd bool, msbs bool, rs_ u
 			0 {
 				rd := if op == 3 { u8(0xF) } else { u8(msbd) << 3 | rd_ }
 				rs := u8(msbs) << 3 | rs_
+				rd_val := c.regs.read(rd)
+				rs_val := c.regs.read(rs)
 				c.regs.r15 += 2
 				if op == 2 && rd == 8 && rs == 8 {
 					c.ctx.step = 3
@@ -241,15 +270,12 @@ fn (mut c Cpu) thumb_hi_reg(bus &Peripherals, op u8, msbd bool, msbs bool, rs_ u
 				}
 				c.ctx.val = 2
 				if op == 1 {
-					rd_val := c.regs.read(rd)
-					rs_val := c.regs.read(rs)
 					result, carry := bits.sub_32(rd_val, rs_val, 0)
 					c.regs.cpsr.set_flag(.v, ((rd_val ^ rs_val) & (rd_val ^ result)) >> 31 > 0)
 					c.regs.cpsr.set_flag(.c, carry > 0)
 					c.regs.cpsr.set_flag(.z, result == 0)
 					c.regs.cpsr.set_flag(.n, result >> 31 > 0)
 				} else if op == 3 {
-					rs_val := c.regs.read(rs)
 					is_thumb := rs_val & 1 > 0
 					val := rs_val & u32(if is_thumb { ~1 } else { ~3 })
 					c.regs.write(rd, val)
@@ -258,7 +284,7 @@ fn (mut c Cpu) thumb_hi_reg(bus &Peripherals, op u8, msbd bool, msbs bool, rs_ u
 						c.regs.cpsr.set_flag(.t, false)
 					}
 				} else {
-					val := c.regs.read(rs) + if op == 0 { c.regs.read(rd) } else { 0 }
+					val := rs_val + if op == 0 { rd_val } else { 0 }
 					c.regs.write(rd, val)
 				}
 				c.ctx.step = if rd == 0xF { 1 } else { 3 }
@@ -485,7 +511,7 @@ fn (mut c Cpu) thumb_add_sp(bus &Peripherals, op bool, imm_ u16) {
 	for {
 		match c.ctx.step {
 			0 {
-				imm := if op { -imm_ } else { imm_ }
+				imm := if op { -u32(imm_) } else { u32(imm_) }
 				c.regs.write(13, c.regs.read(13) + imm)
 				c.regs.r15 += 2
 				c.ctx.step = 1
@@ -635,6 +661,30 @@ fn (mut c Cpu) thumb_stmia(mut bus Peripherals, rd u8, rlist u8) {
 	}
 }
 
+fn (mut c Cpu) thumb_b(bus &Peripherals, cond u8, offset u32) {
+	c.thumb_check_cond(bus, cond) or { return }
+	base_pc := c.regs.r15 + offset
+	size := u32(0xFFFF)
+	match c.ctx.step {
+		0 {
+			val := c.read(bus, base_pc, size) or { return } & size
+			c.ctx.opcodes[1] = val
+			c.ctx.step = 1
+		}
+		1 {
+			val := c.read(bus, base_pc + 2, size) or { return } & size
+			c.ctx.opcodes[2] = val
+			c.regs.r15 = base_pc + 4
+			c.ctx.step = 2
+		}
+		2 {
+			c.fetch(bus) or { return }
+			c.ctx.step = 0
+		}
+		else {}
+	}
+}
+
 fn (mut c Cpu) thumb_swi(bus &Peripherals) {
 	vector_pc := u32(0x08)
 	match c.ctx.step {
@@ -667,7 +717,7 @@ fn (mut c Cpu) thumb_load_lr_high(bus &Peripherals, offset u16) {
 	for {
 		match c.ctx.step {
 			0 {
-				c.regs.write(14, c.regs.r15 + u32(offset) << 12)
+				c.regs.write(14, c.regs.r15 + u32(i32(offset) << 21 >> 9))
 				c.regs.r15 += 2
 				c.ctx.step = 1
 			}
@@ -685,12 +735,12 @@ fn (mut c Cpu) thumb_bl(bus &Peripherals, offset u16) {
 	base_pc := c.regs.read(14) + offset << 1
 	match c.ctx.step {
 		0 {
-			val := c.read(bus, base_pc, 0xFFFF_FFFF) or { return }
+			val := c.read(bus, base_pc, 0xFFFF) or { return } & 0xFFFF
 			c.ctx.opcodes[1] = val
 			c.ctx.step = 1
 		}
 		1 {
-			val := c.read(bus, base_pc + 2, 0xFFFF_FFFF) or { return }
+			val := c.read(bus, base_pc + 2, 0xFFFF) or { return } & 0xFFFF
 			c.ctx.opcodes[2] = val
 			c.regs.write(14, c.regs.r15 - 2)
 			c.regs.r15 = base_pc + 4

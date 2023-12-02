@@ -257,7 +257,7 @@ pub fn (mut r Register) write(addr u8, val u32) {
 			}
 		}
 		15 {
-			r.r15 = val
+			r.r15 = val & u32(if r.cpsr.get_flag(.t) { ~1 } else { ~3 })
 		}
 		else {
 			panic('unexpected address for register: 0x${addr:02X}')
