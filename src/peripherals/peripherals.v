@@ -55,7 +55,8 @@ pub fn (p &Peripherals) read(addr u32, ints &Interrupts) u32 {
 				0x05...0x07 { p.ppu.read(addr) }
 				0x08...0x0F { p.cartridge.read(addr) }
 				// must be prefetched code
-				else { panic('unexpected address for peripherals: ${addr:08x}') }
+				// else { panic('unexpected address for peripherals: ${addr:08x}') }
+				else { 0 }
 			}
 		}
 	}

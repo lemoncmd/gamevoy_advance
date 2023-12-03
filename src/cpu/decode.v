@@ -37,16 +37,19 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 		// swap
 		0b00010_0_00_1001 {
 			// swp
-			panic('unimplemented instruction: ${opcode:08x}')
+			c.swp(mut bus, opcode.cond(), false, opcode.rn(), opcode.rd(), opcode.rm())
+			return
 		}
 		0b00010_1_00_1001 {
 			// swpb
-			panic('unimplemented instruction: ${opcode:08x}')
+			c.swp(mut bus, opcode.cond(), true, opcode.rn(), opcode.rd(), opcode.rm())
+			return
 		}
 		// multiply
 		0b000_0000_0_1001, 0b000_0000_1_1001 {
 			// mul
-			panic('unimplemented instruction: ${opcode:08x}')
+			c.mul(bus, opcode.cond(), opcode.bit(20), opcode.rn(), opcode.rs(), opcode.rm())
+			return
 		}
 		0b000_0001_0_1001, 0b000_0001_1_1001 {
 			// mla
@@ -56,19 +59,27 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 		}
 		0b000_0100_0_1001, 0b000_0100_1_1001 {
 			// umull
-			panic('unimplemented instruction: ${opcode:08x}')
+			c.umull(bus, opcode.cond(), opcode.bit(20), opcode.rn(), opcode.rd(), opcode.rs(),
+				opcode.rm())
+			return
 		}
 		0b000_0101_0_1001, 0b000_0101_1_1001 {
 			// umlal
-			panic('unimplemented instruction: ${opcode:08x}')
+			c.umlal(bus, opcode.cond(), opcode.bit(20), opcode.rn(), opcode.rd(), opcode.rs(),
+				opcode.rm())
+			return
 		}
 		0b000_0110_0_1001, 0b000_0110_1_1001 {
 			// smull
-			panic('unimplemented instruction: ${opcode:08x}')
+			c.smull(bus, opcode.cond(), opcode.bit(20), opcode.rn(), opcode.rd(), opcode.rs(),
+				opcode.rm())
+			return
 		}
 		0b000_0111_0_1001, 0b000_0111_1_1001 {
 			// smlal
-			panic('unimplemented instruction: ${opcode:08x}')
+			c.smlal(bus, opcode.cond(), opcode.bit(20), opcode.rn(), opcode.rd(), opcode.rs(),
+				opcode.rm())
+			return
 		}
 		// bx
 		0b0001_0010_0001 {
@@ -152,7 +163,9 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 					goto unusual_word
 				}
 			}
-			panic('unimplemented instruction: ${opcode:08x}')
+			op2, is_rs, _ := c.calc_alu_op2(opcode)
+			c.sbc(bus, opcode.cond(), opcode.bit(20), opcode.rn(), opcode.rd(), op2, is_rs)
+			return
 		}
 		0b00_0_0111_0_0000...0b00_0_0111_1_1111, 0b00_1_0111_0_0000...0b00_1_0111_1_1111 {
 			// rsc
@@ -161,7 +174,9 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 					goto unusual_word
 				}
 			}
-			panic('unimplemented instruction: ${opcode:08x}')
+			op2, is_rs, _ := c.calc_alu_op2(opcode)
+			c.rsc(bus, opcode.cond(), opcode.bit(20), opcode.rn(), opcode.rd(), op2, is_rs)
+			return
 		}
 		0b00_0_1000_1_0000...0b00_0_1000_1_1111, 0b00_1_1000_1_0000...0b00_1_1000_1_1111 {
 			// tst
@@ -171,7 +186,7 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 				}
 			}
 			op2, is_rs, carry := c.calc_alu_op2(opcode)
-			c.tst(bus, opcode.cond(), opcode.rn(), op2, is_rs, carry)
+			c.tst(bus, opcode.cond(), opcode.rn(), opcode.rd(), op2, is_rs, carry)
 			return
 		}
 		0b00_0_1001_1_0000...0b00_0_1001_1_1111, 0b00_1_1001_1_0000...0b00_1_1001_1_1111 {
@@ -181,7 +196,9 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 					goto unusual_word
 				}
 			}
-			panic('unimplemented instruction: ${opcode:08x}')
+			op2, is_rs, carry := c.calc_alu_op2(opcode)
+			c.teq(bus, opcode.cond(), opcode.rn(), opcode.rd(), op2, is_rs, carry)
+			return
 		}
 		0b00_0_1010_1_0000...0b00_0_1010_1_1111, 0b00_1_1010_1_0000...0b00_1_1010_1_1111 {
 			// cmp
@@ -191,7 +208,7 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 				}
 			}
 			op2, is_rs, _ := c.calc_alu_op2(opcode)
-			c.cmp(bus, opcode.cond(), opcode.rn(), op2, is_rs)
+			c.cmp(bus, opcode.cond(), opcode.rn(), opcode.rd(), op2, is_rs)
 			return
 		}
 		0b00_0_1011_1_0000...0b00_0_1011_1_1111, 0b00_1_1011_1_0000...0b00_1_1011_1_1111 {
@@ -201,7 +218,9 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 					goto unusual_word
 				}
 			}
-			panic('unimplemented instruction: ${opcode:08x}')
+			op2, is_rs, _ := c.calc_alu_op2(opcode)
+			c.cmn(bus, opcode.cond(), opcode.rn(), opcode.rd(), op2, is_rs)
+			return
 		}
 		0b00_0_1100_0_0000...0b00_0_1100_1_1111, 0b00_1_1100_0_0000...0b00_1_1100_1_1111 {
 			// orr
@@ -245,7 +264,10 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 					goto unusual_word
 				}
 			}
-			panic('unimplemented instruction: ${opcode:08x}')
+			op2, is_rs, carry := c.calc_alu_op2(opcode)
+			c.mvn(bus, opcode.cond(), opcode.bit(20), opcode.rn(), opcode.rd(), op2, is_rs,
+				carry)
+			return
 		}
 		// data transfer
 		0b01_0_0_0000_0000...0b01_1_1_1111_1111 {
@@ -273,6 +295,7 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 				// stm
 				c.stm(mut bus, opcode.cond(), opcode.bit(24), opcode.bit(23), opcode.bit(22),
 					opcode.bit(21), opcode.rn(), u16(opcode))
+				return
 			}
 		}
 		// branch
@@ -289,6 +312,7 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 		0b1111_0000_0000...0b1111_1111_1111 {
 			// swx
 			c.swi(bus, opcode.cond())
+			return
 		}
 		else {
 			unusual_word:
@@ -301,14 +325,6 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 							opcode.bit(21), opcode.rn(), opcode.rd(), c.unusual_ldstr_offset(opcode))
 						return
 					}
-					2 {
-						// ldrd
-						panic('unimplemented instruction: ${opcode:08x}')
-					}
-					3 {
-						// strd
-						panic('unimplemented instruction: ${opcode:08x}')
-					}
 					5 {
 						// ldrh
 						c.ldrh(bus, opcode.cond(), opcode.bit(24), opcode.bit(23), opcode.bit(21),
@@ -317,7 +333,9 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 					}
 					6 {
 						// ldrsb
-						panic('unimplemented instruction: ${opcode:08x}')
+						c.ldrsb(bus, opcode.cond(), opcode.bit(24), opcode.bit(23), opcode.bit(21),
+							opcode.rn(), opcode.rd(), c.unusual_ldstr_offset(opcode))
+						return
 					}
 					7 {
 						// ldrsh
@@ -331,6 +349,7 @@ fn (mut c Cpu) decode(mut bus Peripherals) {
 		}
 	}
 	// undefined exception
+	panic('undefined')
 }
 
 fn (mut c Cpu) decode_thumb(mut bus Peripherals) {

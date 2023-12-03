@@ -40,6 +40,7 @@ pub mut:
 	spsr_abt Psr
 	spsr_irq Psr
 	spsr_und Psr
+	spsr_sys Psr
 }
 
 pub enum Mode {
@@ -64,7 +65,7 @@ pub enum Flag as u32 {
 
 type Psr = u32
 
-fn (p Psr) get_mode() Mode {
+pub fn (p Psr) get_mode() Mode {
 	mode := u32(p) & 0b11111
 	$for m in Mode.values {
 		if mode == u32(m.value) {
@@ -316,7 +317,7 @@ pub fn (r &Register) read_spsr() Psr {
 		.abort { r.spsr_abt }
 		.irq { r.spsr_irq }
 		.undefined { r.spsr_und }
-		else { panic('cannot get spsr in user or system mode') }
+		else { r.cpsr }
 	}
 }
 
@@ -327,6 +328,6 @@ pub fn (mut r Register) write_spsr(val u32) {
 		.abort { r.spsr_abt = val }
 		.irq { r.spsr_irq = val }
 		.undefined { r.spsr_und = val }
-		else { panic('cannot get spsr in user or system mode') }
+		else {}
 	}
 }

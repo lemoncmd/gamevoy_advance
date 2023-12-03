@@ -33,7 +33,7 @@ fn (mut c Cpu) thumb_shift(bus &Peripherals, op u8, offset u8, rs u8, rd u8) {
 					2 { util.asr(rs_val, offset2) }
 					else { panic('unreachable') }
 				}
-				c.regs.write(rs, val)
+				c.regs.write(rd, val)
 				if op != 0 || offset != 0 {
 					if ca := carry {
 						c.regs.cpsr.set_flag(.c, ca)
@@ -340,6 +340,11 @@ fn (mut c Cpu) thumb_str_reg_offset(mut bus Peripherals, size u32, ro u8, rb u8,
 		match c.ctx.step {
 			0 {
 				c.ctx.addr = c.regs.read(rb) + c.regs.read(ro)
+				match size {
+					0xFFFF_FFFF { c.ctx.addr &= 0xFFFF_FFFC }
+					0xFFFF { c.ctx.addr &= 0xFFFF_FFFE }
+					else {}
+				}
 				c.regs.r15 += 2
 				c.ctx.step = 1
 			}
@@ -366,9 +371,20 @@ fn (mut c Cpu) thumb_ldr_reg_offset(bus &Peripherals, size u32, signed bool, ro 
 			c.ctx.step = 1
 		}
 		1 {
-			mut val := c.read(bus, c.ctx.addr, size) or { return } & size
+			aligned := match size {
+				0xFFFF_FFFF { c.ctx.addr & 0xFFFF_FFFC }
+				0xFFFF { c.ctx.addr & 0xFFFF_FFFE }
+				else { c.ctx.addr }
+			}
+			mut val := c.read(bus, aligned, size) or { return } & size
+			if size == 0xFFFF_FFFF && c.ctx.addr & 3 > 0 {
+				val, _ = util.ror(val, (c.ctx.addr & 3) << 3)
+			}
+			if size == 0xFFFF && c.ctx.addr & 1 > 0 {
+				val, _ = util.ror(val, 8)
+			}
 			if signed {
-				if size == 0xFF {
+				if size == 0xFF || c.ctx.addr & 1 > 0 {
 					val = u32(i32(i8(val)))
 				} else {
 					val = u32(i32(i16(val)))
@@ -390,6 +406,11 @@ fn (mut c Cpu) thumb_str_imm_offset(mut bus Peripherals, size u32, imm u8, rb u8
 		match c.ctx.step {
 			0 {
 				c.ctx.addr = c.regs.read(rb) + imm
+				match size {
+					0xFFFF_FFFF { c.ctx.addr &= 0xFFFF_FFFC }
+					0xFFFF { c.ctx.addr &= 0xFFFF_FFFE }
+					else {}
+				}
 				c.regs.r15 += 2
 				c.ctx.step = 1
 			}
@@ -416,7 +437,18 @@ fn (mut c Cpu) thumb_ldr_imm_offset(bus &Peripherals, size u32, imm u8, rb u8, r
 			c.ctx.step = 1
 		}
 		1 {
-			mut val := c.read(bus, c.ctx.addr, size) or { return } & size
+			aligned := match size {
+				0xFFFF_FFFF { c.ctx.addr & 0xFFFF_FFFC }
+				0xFFFF { c.ctx.addr & 0xFFFF_FFFE }
+				else { c.ctx.addr }
+			}
+			mut val := c.read(bus, aligned, size) or { return } & size
+			if size == 0xFFFF_FFFF && c.ctx.addr & 3 > 0 {
+				val, _ = util.ror(val, (c.ctx.addr & 3) << 3)
+			}
+			if size == 0xFFFF && c.ctx.addr & 1 > 0 {
+				val, _ = util.ror(val, 8)
+			}
 			c.regs.write(rd, val)
 			c.ctx.step = 2
 		}
@@ -433,6 +465,7 @@ fn (mut c Cpu) thumb_str_sp_relative(mut bus Peripherals, rd u8, imm u16) {
 		match c.ctx.step {
 			0 {
 				c.ctx.addr = c.regs.read(13) + imm
+				c.ctx.addr &= 0xFFFF_FFFC
 				c.regs.r15 += 2
 				c.ctx.step = 1
 			}
@@ -459,7 +492,10 @@ fn (mut c Cpu) thumb_ldr_sp_relative(bus &Peripherals, rd u8, imm u16) {
 			c.ctx.step = 1
 		}
 		1 {
-			mut val := c.read(bus, c.ctx.addr, 0xFFFF_FFFF) or { return }
+			mut val := c.read(bus, c.ctx.addr & 0xFFFF_FFFC, 0xFFFF_FFFF) or { return }
+			if c.ctx.addr & 3 > 0 {
+				val, _ = util.ror(val, (c.ctx.addr & 3) << 3)
+			}
 			c.regs.write(rd, val)
 			c.ctx.step = 2
 		}
@@ -536,7 +572,7 @@ fn (mut c Cpu) thumb_pop(bus &Peripherals, pop_pc bool, rlist_ u8) {
 			c.ctx.step = if rlist == 0 { 4 } else { 1 }
 		}
 		1 {
-			val := c.read(bus, c.ctx.addr, 0xFFFF_FFFF) or { return }
+			val := c.read(bus, c.ctx.addr & 0xFFFF_FFFC, 0xFFFF_FFFF) or { return }
 			reg := bits.trailing_zeros_16(u16(c.ctx.val))
 			c.regs.write(u8(reg), val)
 			c.ctx.val &= ~(1 << reg)
@@ -547,14 +583,14 @@ fn (mut c Cpu) thumb_pop(bus &Peripherals, pop_pc bool, rlist_ u8) {
 			}
 		}
 		2 {
-			val := c.read(bus, c.regs.r15, 0xFFFF_FFFF) or { return }
+			val := c.read(bus, c.regs.r15, 0xFFFF) or { return }
 			c.ctx.opcodes[1] = val
 			c.ctx.step = 3
 		}
 		3 {
-			val := c.read(bus, c.regs.r15 + 2, 0xFFFF_FFFF) or { return }
+			val := c.read(bus, c.regs.r15 + 2, 0xFFFF) or { return }
 			c.ctx.opcodes[2] = val
-			c.regs.r15 += 2
+			c.regs.r15 += 4
 			c.ctx.step = 4
 		}
 		4 {
@@ -582,7 +618,7 @@ fn (mut c Cpu) thumb_push(mut bus Peripherals, push_lr bool, rlist_ u8) {
 			1 {
 				reg := bits.len_16(u16(c.ctx.val)) - 1
 				val := c.regs.read(u8(reg))
-				c.write(mut bus, c.ctx.addr, val, 0xFFFF_FFFF) or { return }
+				c.write(mut bus, c.ctx.addr & 0xFFFF_FFFC, val, 0xFFFF_FFFF) or { return }
 				c.ctx.val &= ~(1 << reg)
 				if c.ctx.val != 0 {
 					c.ctx.addr -= 4
@@ -607,6 +643,7 @@ fn (mut c Cpu) thumb_ldmia(bus &Peripherals, rd u8, rlist u8) {
 	match c.ctx.step {
 		0 {
 			c.ctx.addr = c.regs.read(rd)
+			c.ctx.addr &= 0xFFFF_FFFC
 			c.ctx.val = rlist
 			c.regs.r15 += 2
 			c.ctx.step = if rlist == 0 { 2 } else { 1 }
@@ -635,6 +672,7 @@ fn (mut c Cpu) thumb_stmia(mut bus Peripherals, rd u8, rlist u8) {
 		match c.ctx.step {
 			0 {
 				c.ctx.addr = c.regs.read(rd)
+				c.ctx.addr &= 0xFFFF_FFFC
 				c.ctx.val = rlist
 				c.regs.r15 += 2
 				c.ctx.step = if rlist == 0 { 2 } else { 1 }

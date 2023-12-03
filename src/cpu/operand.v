@@ -35,9 +35,12 @@ fn (c &Cpu) calc_alu_op2(opcode Opcode) (u32, bool, ?bool) {
 	} else {
 		// reg
 		r := opcode.bit(4)
-		rm := c.regs.read(opcode.rm())
+		mut rm := c.regs.read(opcode.rm())
+		if r && opcode.rm() == 0xF {
+			rm += 4
+		}
 		ls := if r {
-			c.regs.read(u8(u32(opcode) >> 8) & 0xF)
+			c.regs.read(u8(u32(opcode) >> 8) & 0xF) & 0xFF
 		} else {
 			(u32(opcode) >> 7) & 0x1F
 		}
