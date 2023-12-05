@@ -1504,18 +1504,23 @@ fn (mut c Cpu) ldm(bus &Peripherals, cond u8, is_pre bool, is_up bool, s bool, w
 		0 {
 			c.ctx.addr = c.regs.read(rn)
 			if is_pre {
-				if is_up {
-					c.ctx.addr += 4
+				if rlist == 0 {
+					if is_up {
+						c.ctx.addr += 64
+					} else {
+						c.ctx.addr -= 64
+					}
 				} else {
-					c.ctx.addr -= 4
-				}
-				if write_back && rlist != 0 {
-					c.regs.write(rn, c.ctx.addr)
+					if is_up {
+						c.ctx.addr += 4
+					} else {
+						c.ctx.addr -= 4
+					}
 				}
 			}
-			c.ctx.val = rlist
+			c.ctx.val = if rlist == 0 { u16(0x8000) } else { rlist }
 			c.regs.r15 += 4
-			c.ctx.step = if rlist == 0 { 4 } else { 1 }
+			c.ctx.step = 1
 		}
 		1 {
 			val := c.read(bus, c.ctx.addr & 0xFFFF_FFFC, 0xFFFF_FFFF) or { return }
@@ -1531,17 +1536,25 @@ fn (mut c Cpu) ldm(bus &Peripherals, cond u8, is_pre bool, is_up bool, s bool, w
 			}
 			c.ctx.val &= ~(1 << reg)
 			if !is_pre || (is_pre && c.ctx.val != 0) {
-				if is_up {
-					c.ctx.addr += 4
+				if rlist == 0 {
+					if is_up {
+						c.ctx.addr += 64
+					} else {
+						c.ctx.addr -= 64
+					}
 				} else {
-					c.ctx.addr -= 4
-				}
-				if write_back {
-					c.regs.write(rn, c.ctx.addr)
+					if is_up {
+						c.ctx.addr += 4
+					} else {
+						c.ctx.addr -= 4
+					}
 				}
 			}
 			if c.ctx.val == 0 {
-				c.ctx.step = if rlist >> 15 > 0 { 2 } else { 4 }
+				if write_back && (rlist & (1 << rn)) == 0 {
+					c.regs.write(rn, c.ctx.addr)
+				}
+				c.ctx.step = if rlist >> 15 > 0 || rlist == 0 { 2 } else { 4 }
 			}
 		}
 		2 {
@@ -1573,6 +1586,8 @@ fn (mut c Cpu) ldm(bus &Peripherals, cond u8, is_pre bool, is_up bool, s bool, w
 
 fn (mut c Cpu) stm(mut bus Peripherals, cond u8, is_pre bool, is_up bool, s bool, write_back bool, rn u8, rlist u16) {
 	c.check_cond(bus, cond) or { return }
+	reg_first := bits.len_16(rlist) - 1
+	reg_last := bits.trailing_zeros_16(rlist)
 	for {
 		match c.ctx.step {
 			0 {
@@ -1583,13 +1598,17 @@ fn (mut c Cpu) stm(mut bus Peripherals, cond u8, is_pre bool, is_up bool, s bool
 					} else {
 						c.ctx.addr -= 4
 					}
-					if write_back && rlist != 0 {
-						c.regs.write(rn, c.ctx.addr)
+				}
+				c.ctx.val = if rlist == 0 { u32(0x7FFF_8000) } else { u32(rlist) }
+				if write_back && rn !in [reg_first, reg_last] && (rlist & (1 << rn)) > 0 {
+					if is_up {
+						c.regs.write(rn, c.regs.read(rn) + 4 * u32(bits.ones_count_16(u16(c.ctx.val))))
+					} else {
+						c.regs.write(rn, c.regs.read(rn) - 4 * u32(bits.ones_count_16(u16(c.ctx.val))))
 					}
 				}
-				c.ctx.val = rlist
 				c.regs.r15 += 4
-				c.ctx.step = if rlist == 0 { 2 } else { 1 }
+				c.ctx.step = 1
 			}
 			1 {
 				reg := if is_up {
@@ -1602,19 +1621,24 @@ fn (mut c Cpu) stm(mut bus Peripherals, cond u8, is_pre bool, is_up bool, s bool
 				} else {
 					c.regs.read(u8(reg))
 				}
-				c.write(mut bus, c.ctx.addr & 0xFFFF_FFFC, val, 0xFFFF_FFFF) or { return }
+				if rlist != 0 || reg == 0xF {
+					c.write(mut bus, c.ctx.addr & 0xFFFF_FFFC, val, 0xFFFF_FFFF) or { return }
+				}
 				c.ctx.val &= ~(1 << reg)
+				if rlist == 0 {
+					c.ctx.val >>= 1
+				}
 				if !is_pre || (is_pre && c.ctx.val != 0) {
 					if is_up {
 						c.ctx.addr += 4
 					} else {
 						c.ctx.addr -= 4
 					}
-					if write_back {
-						c.regs.write(rn, c.ctx.addr)
-					}
 				}
 				if c.ctx.val == 0 {
+					if write_back && rn != reg_first {
+						c.regs.write(rn, c.ctx.addr)
+					}
 					c.ctx.step = 2
 				}
 				return
