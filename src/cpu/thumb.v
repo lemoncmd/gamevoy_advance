@@ -567,19 +567,19 @@ fn (mut c Cpu) thumb_pop(bus &Peripherals, pop_pc bool, rlist_ u8) {
 	match c.ctx.step {
 		0 {
 			c.ctx.addr = c.regs.read(13)
-			c.ctx.val = rlist
+			c.ctx.val = if rlist == 0 { u16(0x8000) } else { rlist }
 			c.regs.r15 += 2
-			c.ctx.step = if rlist == 0 { 4 } else { 1 }
+			c.ctx.step = 1
 		}
 		1 {
 			val := c.read(bus, c.ctx.addr & 0xFFFF_FFFC, 0xFFFF_FFFF) or { return }
 			reg := bits.trailing_zeros_16(u16(c.ctx.val))
 			c.regs.write(u8(reg), val)
 			c.ctx.val &= ~(1 << reg)
-			c.ctx.addr += 4
-			c.regs.write(13, c.ctx.addr)
+			c.ctx.addr += if rlist == 0 { u32(64) } else { 4 }
 			if c.ctx.val == 0 {
-				c.ctx.step = if rlist >> 15 > 0 { 2 } else { 4 }
+				c.regs.write(13, c.ctx.addr)
+				c.ctx.step = if rlist >> 15 > 0 || rlist == 0 { 2 } else { 4 }
 			}
 		}
 		2 {
@@ -608,23 +608,25 @@ fn (mut c Cpu) thumb_push(mut bus Peripherals, push_lr bool, rlist_ u8) {
 			0 {
 				c.ctx.addr = c.regs.read(13)
 				c.ctx.addr -= 4
-				if rlist != 0 {
-					c.regs.write(13, c.ctx.addr)
-				}
-				c.ctx.val = rlist
+				c.ctx.val = if rlist == 0 { u32(0x7FFF_8000) } else { u32(rlist) }
 				c.regs.r15 += 2
 				c.ctx.step = if rlist == 0 { 2 } else { 1 }
 			}
 			1 {
 				reg := bits.len_16(u16(c.ctx.val)) - 1
 				val := c.regs.read(u8(reg))
-				c.write(mut bus, c.ctx.addr & 0xFFFF_FFFC, val, 0xFFFF_FFFF) or { return }
+				if rlist != 0 || reg == 0xF {
+					c.write(mut bus, c.ctx.addr & 0xFFFF_FFFC, val, 0xFFFF_FFFF) or { return }
+				}
 				c.ctx.val &= ~(1 << reg)
+				if rlist == 0 {
+					c.ctx.val >>= 1
+				}
 				if c.ctx.val != 0 {
 					c.ctx.addr -= 4
-					c.regs.write(13, c.ctx.addr)
 				}
 				if c.ctx.val == 0 {
+					c.regs.write(13, c.ctx.addr)
 					c.ctx.step = 2
 				}
 				return
@@ -643,23 +645,35 @@ fn (mut c Cpu) thumb_ldmia(bus &Peripherals, rd u8, rlist u8) {
 	match c.ctx.step {
 		0 {
 			c.ctx.addr = c.regs.read(rd)
-			c.ctx.addr &= 0xFFFF_FFFC
-			c.ctx.val = rlist
+			c.ctx.val = if rlist == 0 { u16(0x8000) } else { u16(rlist) }
 			c.regs.r15 += 2
-			c.ctx.step = if rlist == 0 { 2 } else { 1 }
+			c.ctx.step = 1
 		}
 		1 {
-			val := c.read(bus, c.ctx.addr, 0xFFFF_FFFF) or { return }
-			reg := bits.trailing_zeros_8(u8(c.ctx.val))
+			val := c.read(bus, c.ctx.addr & 0xFFFF_FFFC, 0xFFFF_FFFF) or { return }
+			reg := bits.trailing_zeros_16(u16(c.ctx.val))
 			c.regs.write(u8(reg), val)
 			c.ctx.val &= ~(1 << reg)
-			c.ctx.addr += 4
-			c.regs.write(rd, c.ctx.addr)
+			c.ctx.addr += if rlist == 0 { u32(64) } else { 4 }
 			if c.ctx.val == 0 {
-				c.ctx.step = 2
+				if (rlist & (1 << rd)) == 0 {
+					c.regs.write(rd, c.ctx.addr)
+				}
+				c.ctx.step = if rlist == 0 { 2 } else { 4 }
 			}
 		}
 		2 {
+			val := c.read(bus, c.regs.r15, 0xFFFF) or { return }
+			c.ctx.opcodes[1] = val
+			c.ctx.step = 3
+		}
+		3 {
+			val := c.read(bus, c.regs.r15 + 2, 0xFFFF) or { return }
+			c.ctx.opcodes[2] = val
+			c.regs.r15 += 4
+			c.ctx.step = 4
+		}
+		4 {
 			c.fetch(bus) or { return }
 			c.ctx.step = 0
 		}
@@ -668,23 +682,34 @@ fn (mut c Cpu) thumb_ldmia(bus &Peripherals, rd u8, rlist u8) {
 }
 
 fn (mut c Cpu) thumb_stmia(mut bus Peripherals, rd u8, rlist u8) {
+	reg_first := bits.len_16(rlist) - 1
+	reg_last := bits.trailing_zeros_16(rlist)
 	for {
 		match c.ctx.step {
 			0 {
 				c.ctx.addr = c.regs.read(rd)
-				c.ctx.addr &= 0xFFFF_FFFC
-				c.ctx.val = rlist
+				c.ctx.val = if rlist == 0 { u32(0x7FFF_8000) } else { u32(rlist) }
+				if rd !in [reg_first, reg_last] && (rlist & (1 << rd)) > 0 {
+					c.regs.write(rd, c.regs.read(rd) + 4 * u32(bits.ones_count_16(u16(c.ctx.val))))
+				}
 				c.regs.r15 += 2
-				c.ctx.step = if rlist == 0 { 2 } else { 1 }
+				c.ctx.step = 1
 			}
 			1 {
-				reg := bits.trailing_zeros_8(u8(c.ctx.val))
+				reg := bits.trailing_zeros_16(u16(c.ctx.val))
 				val := c.regs.read(u8(reg))
-				c.write(mut bus, c.ctx.addr, val, 0xFFFF_FFFF) or { return }
+				if rlist != 0 || reg == 0xF {
+					c.write(mut bus, c.ctx.addr & 0xFFFF_FFFC, val, 0xFFFF_FFFF) or { return }
+				}
 				c.ctx.val &= ~(1 << reg)
+				if rlist == 0 {
+					c.ctx.val >>= 1
+				}
 				c.ctx.addr += 4
-				c.regs.write(rd, c.ctx.addr)
 				if c.ctx.val == 0 {
+					if rd != reg_first {
+						c.regs.write(rd, c.ctx.addr)
+					}
 					c.ctx.step = 2
 				}
 				return
