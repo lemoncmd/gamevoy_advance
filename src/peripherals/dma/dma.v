@@ -164,9 +164,6 @@ pub fn (mut d Dmas) emulate_cycle(mut ints Interrupts, status HookStatus) ?DmaIn
 	for i in 0 .. 3 {
 		dma := d.dmas[i]
 		mut dmacnt := DmaCnt.from(dma.cnt_h)
-		defer {
-			d.dmas[i].cnt_h = u16(dmacnt)
-		}
 		if !dmacnt.has(.enable) {
 			continue
 		}
@@ -239,8 +236,10 @@ pub fn (mut d Dmas) emulate_cycle(mut ints Interrupts, status HookStatus) ?DmaIn
 				}
 			}
 
+			d.dmas[i].cnt_h = u16(dmacnt)
 			return ret
 		}
+		d.dmas[i].cnt_h = u16(dmacnt)
 	}
 	return none
 }
