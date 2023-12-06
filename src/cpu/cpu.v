@@ -2,6 +2,7 @@ module cpu
 
 import cpu.register { Register }
 import cpu.interrupts { Interrupts }
+import peripherals.dma { DmaInfo }
 import peripherals { Peripherals }
 
 struct Ctx {
@@ -10,8 +11,10 @@ mut:
 	waitstates u8
 	bus_value  u32
 	step       int
+	dma_step   int
 	addr       u32
 	val        u32
+	dma_val    u32
 	in_int     bool
 	is_thumb   bool
 }
@@ -22,6 +25,7 @@ mut:
 	regs register.Register
 pub mut:
 	interrupts interrupts.Interrupts
+	dma_info   ?DmaInfo
 }
 
 pub fn Cpu.new() Cpu {
@@ -45,7 +49,8 @@ pub fn (mut c Cpu) emulate_cycle(mut bus Peripherals) {
 	if c.regs.r15 == 0x2840 {
 		println('${c.regs.read(0):08x} ${c.regs.read(1):08x} ${c.regs.read(2):08x} ${c.regs.read(3):08x}')
 	}*/
-	if c.ctx.in_int {
+	if dma_info := c.dma_info {
+	} else if c.ctx.in_int {
 		c.int(bus)
 	} else {
 		c.decode(mut bus)

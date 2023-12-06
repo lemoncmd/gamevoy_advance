@@ -30,6 +30,11 @@ pub fn (mut g Gameboy) run() ! {
 }
 
 pub fn (mut g Gameboy) emulate_cycle() bool {
+	if g.cpu.dma_info == none {
+		if dma_info := g.peripherals.dmas.emulate_cycle(mut g.cpu.interrupts) {
+			g.cpu.dma_info = dma_info
+		}
+	}
 	g.cpu.emulate_cycle(mut g.peripherals)
 	g.peripherals.timers.emulate_cycle(mut g.cpu.interrupts)
 	if g.peripherals.ppu.emulate_cycle(mut g.cpu.interrupts) {

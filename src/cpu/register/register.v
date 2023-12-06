@@ -66,7 +66,7 @@ pub enum Flag as u32 {
 type Psr = u32
 
 pub fn (p Psr) get_mode() Mode {
-	mode := u32(p) & 0b11111
+	mode := u32(p) & 0b1111 | 0b10000
 	$for m in Mode.values {
 		if mode == u32(m.value) {
 			return m.value

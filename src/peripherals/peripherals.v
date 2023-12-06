@@ -5,6 +5,7 @@ import peripherals.ewram { EWram }
 import peripherals.iwram { IWram }
 import peripherals.ppu { Ppu }
 import peripherals.timer { Timers }
+import peripherals.dma { Dmas }
 import peripherals.cartridge { Cartridge }
 import cpu.interrupts { Interrupts }
 
@@ -17,6 +18,7 @@ mut:
 pub mut:
 	ppu ppu.Ppu
 	timers timer.Timers
+	dmas dma.Dmas
 }
 
 pub fn Peripherals.new(b Bios, c Cartridge) Peripherals {
@@ -27,6 +29,7 @@ pub fn Peripherals.new(b Bios, c Cartridge) Peripherals {
 		cartridge: c
 		ppu: Ppu.new()
 		timers: Timers.new()
+		dmas: Dmas.new()
 	}
 }
 

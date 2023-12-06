@@ -1756,3 +1756,27 @@ fn (mut c Cpu) int(bus &Peripherals) {
 		else {}
 	}
 }
+
+fn (mut c Cpu) dma_transfter(mut bus Peripherals) {
+	dma_info := c.dma_info or { return }
+	match c.ctx.dma_step {
+		0 {
+			c.ctx.dma_val = c.read(bus, dma_info.source, dma_info.size) or { return } & dma_info.size
+			c.ctx.dma_step = 1
+		}
+		1 {
+			c.write(mut bus, dma_info.destination, c.ctx.dma_val, dma_info.size) or { return }
+			// TODO gamepak memory
+			c.ctx.dma_val = 2
+			c.ctx.dma_step = 2
+		}
+		2 {
+			c.ctx.dma_val--
+			if c.ctx.dma_val == 0 {
+				c.dma_info = none
+				c.ctx.dma_step = 0
+			}
+		}
+		else {}
+	}
+}
