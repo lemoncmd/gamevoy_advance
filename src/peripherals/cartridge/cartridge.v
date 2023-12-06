@@ -6,7 +6,8 @@ mut:
 	ram [0x10000]u8
 }
 
-pub fn Cartridge.new(rom []u8) Cartridge {
+pub fn Cartridge.new(rom_ []u8) Cartridge {
+	mut rom := rom_.clone()
 	header := unsafe { *(&CartridgeHeader(&rom[0])) }
 	header.check_sum()
 
@@ -22,6 +23,9 @@ pub fn Cartridge.new(rom []u8) Cartridge {
 	}
 
 	println('cartridge info { title: ${title}, region: ${region}, rom_size: ${rom.len} B }')
+	for _ in 0..8 {
+		rom << 0
+	}
 	return Cartridge{
 		rom: rom
 	}
