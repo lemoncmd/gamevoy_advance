@@ -46,6 +46,9 @@ pub fn (p &Peripherals) read(addr u32, ints &Interrupts) u32 {
 			println('unsupported read: ${addr:08x}')
 			0
 		}
+		0x0400_00B0...0x0400_00DF {
+			p.dmas.read(addr)
+		}
 		0x0400_0100...0x0400_010F {
 			p.timers.read(addr)
 		}
@@ -77,7 +80,13 @@ pub fn (mut p Peripherals) write(addr u32, val u32, size u32, mut ints Interrupt
 		0x0400_0000...0x0400_005F {
 			p.ppu.write(addr, val, size)
 		}
-		0x0400_0060...0x0400_00FF {
+		0x0400_0060...0x0400_00AF {
+			println('unsupported write: ${addr:08x}')
+		}
+		0x0400_00B0...0x0400_00DF {
+			p.dmas.write(addr, val, size)
+		}
+		0x0400_00E0...0x0400_00FF {
 			println('unsupported write: ${addr:08x}')
 		}
 		0x0400_0100...0x0400_010F {

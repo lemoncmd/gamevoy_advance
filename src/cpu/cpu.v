@@ -50,6 +50,7 @@ pub fn (mut c Cpu) emulate_cycle(mut bus Peripherals) {
 		println('${c.regs.read(0):08x} ${c.regs.read(1):08x} ${c.regs.read(2):08x} ${c.regs.read(3):08x}')
 	}*/
 	if dma_info := c.dma_info {
+		c.dma_transfer(mut bus, dma_info)
 	} else if c.ctx.in_int {
 		c.int(bus)
 	} else {

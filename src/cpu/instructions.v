@@ -3,6 +3,7 @@ module cpu
 import math.bits
 import util
 import peripherals { Peripherals }
+import peripherals.dma { DmaInfo }
 
 fn (mut c Cpu) check_cond(bus &Peripherals, cond u8) ? {
 	if !c.cond(cond) {
@@ -1757,8 +1758,7 @@ fn (mut c Cpu) int(bus &Peripherals) {
 	}
 }
 
-fn (mut c Cpu) dma_transfter(mut bus Peripherals) {
-	dma_info := c.dma_info or { return }
+fn (mut c Cpu) dma_transfer(mut bus Peripherals, dma_info DmaInfo) {
 	match c.ctx.dma_step {
 		0 {
 			c.ctx.dma_val = c.read(bus, dma_info.source, dma_info.size) or { return } & dma_info.size

@@ -50,7 +50,7 @@ pub fn (t &Timers) read(addr u32) u32 {
 }
 
 fn (t &Timers) read_16(addr u32) u32 {
-	return match addr {
+	return match addr & 0xFFFF_FFFE {
 		0x0400_0100 { t.timers[0].tmcnt_l }
 		0x0400_0102 { t.timers[0].tmcnt_h }
 		0x0400_0104 { t.timers[1].tmcnt_l }
@@ -72,7 +72,7 @@ pub fn (mut t Timers) write(addr u32, val u32, size u32) {
 
 fn (mut t Timers) write_16(addr u32, val u16, size u16) {
 	shift := (addr & 1) << 3
-	match addr {
+	match addr & 0xFFFF_FFFE {
 		0x0400_0100 {
 			t.timers[0].tmcnt_reload &= ~(size << shift)
 			t.timers[0].tmcnt_reload |= val << shift
