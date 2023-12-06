@@ -379,6 +379,14 @@ fn (mut p Ppu) render() {
 	p.render_obj(winflags, priorities)
 }
 
+pub fn (p &Ppu) in_vblank() bool {
+	return DispStat.from(p.dispstat).has(.vblank)
+}
+
+pub fn (p &Ppu) in_hblank() bool {
+	return DispStat.from(p.dispstat).has(.hblank)
+}
+
 pub fn (p &Ppu) pixel_buffer() []u8 {
 	return []u8{len: 153600, init: p.buffer[index]}
 }

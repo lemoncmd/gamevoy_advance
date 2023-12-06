@@ -96,10 +96,17 @@ pub fn (mut d Dmas) write(addr u32, val u32, size u32) {
 		}
 		0x0400_00B8 {
 			mut cnt := u32(d.dmas[0].cnt_l) | u32(d.dmas[0].cnt_h) << 16
+			disabled := cnt >> 31 == 0
 			cnt &= ~(size << shift)
 			cnt |= val << shift
 			d.dmas[0].cnt_l = u16(cnt)
 			d.dmas[0].cnt_h = u16(cnt >> 16)
+			if disabled && cnt >> 31 > 0 {
+				dma := d.dmas[0]
+				d.dmas[0].count = if dma.cnt_l != 0 { dma.cnt_l } else { 0x4000 }
+				d.dmas[0].source = dma.sad
+				d.dmas[0].destination = dma.dad
+			}
 		}
 		0x0400_00BC {
 			d.dmas[1].sad &= ~(size << shift)
@@ -111,10 +118,17 @@ pub fn (mut d Dmas) write(addr u32, val u32, size u32) {
 		}
 		0x0400_00C4 {
 			mut cnt := u32(d.dmas[1].cnt_l) | u32(d.dmas[1].cnt_h) << 16
+			disabled := cnt >> 31 == 0
 			cnt &= ~(size << shift)
 			cnt |= val << shift
 			d.dmas[1].cnt_l = u16(cnt)
 			d.dmas[1].cnt_h = u16(cnt >> 16)
+			if disabled && cnt >> 31 > 0 {
+				dma := d.dmas[1]
+				d.dmas[1].count = if dma.cnt_l != 0 { dma.cnt_l } else { 0x4000 }
+				d.dmas[1].source = dma.sad
+				d.dmas[1].destination = dma.dad
+			}
 		}
 		0x0400_00C8 {
 			d.dmas[2].sad &= ~(size << shift)
@@ -126,10 +140,17 @@ pub fn (mut d Dmas) write(addr u32, val u32, size u32) {
 		}
 		0x0400_00D0 {
 			mut cnt := u32(d.dmas[2].cnt_l) | u32(d.dmas[2].cnt_h) << 16
+			disabled := cnt >> 31 == 0
 			cnt &= ~(size << shift)
 			cnt |= val << shift
 			d.dmas[2].cnt_l = u16(cnt)
 			d.dmas[2].cnt_h = u16(cnt >> 16)
+			if disabled && cnt >> 31 > 0 {
+				dma := d.dmas[2]
+				d.dmas[2].count = if dma.cnt_l != 0 { dma.cnt_l } else { 0x4000 }
+				d.dmas[2].source = dma.sad
+				d.dmas[2].destination = dma.dad
+			}
 		}
 		0x0400_00D4 {
 			d.dmas[3].sad &= ~(size << shift)
@@ -141,10 +162,17 @@ pub fn (mut d Dmas) write(addr u32, val u32, size u32) {
 		}
 		0x0400_00DC {
 			mut cnt := u32(d.dmas[3].cnt_l) | u32(d.dmas[3].cnt_h) << 16
+			disabled := cnt >> 31 == 0
 			cnt &= ~(size << shift)
 			cnt |= val << shift
 			d.dmas[3].cnt_l = u16(cnt)
 			d.dmas[3].cnt_h = u16(cnt >> 16)
+			if disabled && cnt >> 31 > 0 {
+				dma := d.dmas[3]
+				d.dmas[3].count = if dma.cnt_l != 0 { u32(dma.cnt_l) } else { 0x10000 }
+				d.dmas[3].source = dma.sad
+				d.dmas[3].destination = dma.dad
+			}
 		}
 		else {}
 	}
