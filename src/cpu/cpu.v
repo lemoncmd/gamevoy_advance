@@ -39,11 +39,12 @@ pub fn (mut c Cpu) init(bus &Peripherals) {
 }
 
 pub fn (mut c Cpu) emulate_cycle(mut bus Peripherals) {
-	/*if c.ctx.step == 0 {
-		println('${if c.regs.cpsr.get_flag(.t) { 't' } else { 'a' }}pc:${c.regs.r15:08x} ${c.ctx.opcodes[0]:08x} ${c.regs.read(1):08x} ${c.regs.read(2):08x} ${c.regs.read(12)}')
+	/*
+	if c.ctx.step == 0 {
+		println('${if c.regs.cpsr.get_flag(.t) { 't' } else { 'a' }}pc:${c.regs.r15:08x} ${c.ctx.opcodes[0]:08x} ${c.regs.read(6):08x}')
 	}*/
 	// if c.ctx.step == 0 { print('\r${c.interrupts.int_enable}') }
-	//flush_stdout()
+	// flush_stdout()
 	// println('${c.ctx.opcodes[0]:08x}, ${c.ctx.opcodes[1]:08x}, ${c.ctx.opcodes[2]:08x}')
 	/*
 	if c.regs.r15 == 0x2840 {

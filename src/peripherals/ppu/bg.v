@@ -176,7 +176,7 @@ fn (mut p Ppu) render_bitmap_mode_bg(winflags [240]WindowFlag, mut priorities [2
 	bg_cnt := BgCnt.from(p.bg2cnt)
 	ly := p.vcount & 0xFF
 	frame_buffer_addr := if bg_mode > 3 && disp_cnt.has(.frame) { 0x5000 } else { 0 }
-	for lx in 0..240 {
+	for lx in 0 .. 240 {
 		match bg_mode {
 			3 {}
 			4 {

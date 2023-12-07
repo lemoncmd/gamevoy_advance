@@ -181,7 +181,12 @@ pub fn (r &Register) read(addr u8) u32 {
 	}
 }
 
-pub fn (mut r Register) write(addr u8, val u32) {
+@[params]
+pub struct WriteRegConfig {
+	validate_r15 bool = true
+}
+
+pub fn (mut r Register) write(addr u8, val u32, config WriteRegConfig) {
 	match addr {
 		0 {
 			r.r0 = val
@@ -258,12 +263,16 @@ pub fn (mut r Register) write(addr u8, val u32) {
 			}
 		}
 		15 {
-			r.r15 = val & u32(if r.cpsr.get_flag(.t) { ~1 } else { ~3 })
+			r.r15 = val & u32(if !config.validate_r15 || r.cpsr.get_flag(.t) { ~1 } else { ~3 })
 		}
 		else {
 			panic('unexpected address for register: 0x${addr:02X}')
 		}
 	}
+}
+
+pub fn (mut r Register) validate_r15() {
+	r.r15 &= u32(if r.cpsr.get_flag(.t) { ~1 } else { ~3 })
 }
 
 pub fn (r &Register) read_user_register(addr u8) u32 {

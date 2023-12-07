@@ -16,9 +16,9 @@ mut:
 	iwram     iwram.IWram
 	cartridge cartridge.Cartridge
 pub mut:
-	ppu ppu.Ppu
+	ppu    ppu.Ppu
 	timers timer.Timers
-	dmas dma.Dmas
+	dmas   dma.Dmas
 }
 
 pub fn Peripherals.new(b Bios, c Cartridge) Peripherals {

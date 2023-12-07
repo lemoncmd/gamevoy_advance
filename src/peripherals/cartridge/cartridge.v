@@ -23,7 +23,7 @@ pub fn Cartridge.new(rom_ []u8) Cartridge {
 	}
 
 	println('cartridge info { title: ${title}, region: ${region}, rom_size: ${rom.len} B }')
-	for _ in 0..8 {
+	for _ in 0 .. 8 {
 		rom << 0
 	}
 	return Cartridge{

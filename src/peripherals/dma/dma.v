@@ -1,6 +1,6 @@
 module dma
 
-import cpu.interrupts { Interrupts, InterruptFlag }
+import cpu.interrupts { InterruptFlag, Interrupts }
 
 pub struct Dmas {
 mut:
@@ -9,12 +9,12 @@ mut:
 
 struct Dma {
 mut:
-	sad u32
-	dad u32
-	cnt_l u16
-	cnt_h u16
-	count u32
-	source u32
+	sad         u32
+	dad         u32
+	cnt_l       u16
+	cnt_h       u16
+	count       u32
+	source      u32
 	destination u32
 	transfering bool
 }
@@ -25,6 +25,7 @@ enum DmaCnt as u16 {
 	unused1
 	unused2
 	unused3
+	unused4
 	destination0
 	destination1
 	source0
@@ -39,11 +40,11 @@ enum DmaCnt as u16 {
 }
 
 fn (d DmaCnt) destination() u16 {
-	return (u16(d) >> 4) & 3
+	return (u16(d) >> 5) & 3
 }
 
 fn (d DmaCnt) source() u16 {
-	return (u16(d) >> 6) & 3
+	return (u16(d) >> 7) & 3
 }
 
 fn (d DmaCnt) mode() u16 {
@@ -56,9 +57,9 @@ fn DmaCnt.from(val u16) DmaCnt {
 
 pub struct DmaInfo {
 pub:
-	source u32
+	source      u32
 	destination u32
-	size u32
+	size        u32
 }
 
 pub fn Dmas.new() Dmas {
@@ -85,6 +86,7 @@ pub fn (d &Dmas) read(addr u32) u32 {
 
 pub fn (mut d Dmas) write(addr u32, val u32, size u32) {
 	shift := (addr & 3) << 3
+	println('dma ${addr:08x} ${val:08x} ${size:08x}')
 	match addr & 0xFFFF_FFFC {
 		0x0400_00B0 {
 			d.dmas[0].sad &= ~(size << shift)
@@ -180,16 +182,16 @@ pub fn (mut d Dmas) write(addr u32, val u32, size u32) {
 
 @[params]
 pub struct HookStatus {
-	vblank bool
-	hblank bool
-	sound bool
+	vblank  bool
+	hblank  bool
+	sound   bool
 	capture bool
 }
 
 const flags = [InterruptFlag.dma0, .dma1, .dma2, .dma3]
 
 pub fn (mut d Dmas) emulate_cycle(mut ints Interrupts, status HookStatus) ?DmaInfo {
-	for i in 0 .. 3 {
+	for i in 0 .. 4 {
 		dma := d.dmas[i]
 		mut dmacnt := DmaCnt.from(dma.cnt_h)
 		if !dmacnt.has(.enable) {
@@ -198,9 +200,15 @@ pub fn (mut d Dmas) emulate_cycle(mut ints Interrupts, status HookStatus) ?DmaIn
 
 		if !dma.transfering {
 			start := match dmacnt.mode() {
-				0 { true }
-				1 { status.vblank }
-				2 { status.hblank }
+				0 {
+					true
+				}
+				1 {
+					status.vblank
+				}
+				2 {
+					status.hblank
+				}
 				else {
 					match i {
 						1, 2 { status.sound }
@@ -260,7 +268,7 @@ pub fn (mut d Dmas) emulate_cycle(mut ints Interrupts, status HookStatus) ?DmaIn
 					dmacnt.clear(.enable)
 				}
 				if dmacnt.has(.irq_enable) {
-					ints.irq(flags[i])
+					ints.irq(dma.flags[i])
 				}
 			}
 

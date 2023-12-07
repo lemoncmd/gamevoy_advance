@@ -805,7 +805,7 @@ fn (mut c Cpu) thumb_bl(bus &Peripherals, offset u16) {
 		1 {
 			val := c.read(bus, base_pc + 2, 0xFFFF) or { return } & 0xFFFF
 			c.ctx.opcodes[2] = val
-			c.regs.write(14, c.regs.r15 - 2)
+			c.regs.write(14, (c.regs.r15 - 2) | 1)
 			c.regs.r15 = base_pc + 4
 			c.ctx.step = 2
 		}

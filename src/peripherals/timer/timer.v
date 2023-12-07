@@ -1,18 +1,18 @@
 module timer
 
-import cpu.interrupts { Interrupts, InterruptFlag }
+import cpu.interrupts { InterruptFlag, Interrupts }
 
 pub struct Timers {
 mut:
-	count u16
+	count  u16
 	timers [4]Timer
 }
 
 struct Timer {
 mut:
-	tmcnt_l u16
+	tmcnt_l      u16
 	tmcnt_reload u16
-	tmcnt_h u16
+	tmcnt_h      u16
 }
 
 @[flag]
@@ -146,7 +146,7 @@ pub fn (mut t Timers) emulate_cycle(mut ints Interrupts) {
 				overflowed = true
 				t.timers[i].tmcnt_l = timer.tmcnt_reload
 				if tmcnt.has(.irq_enable) {
-					ints.irq(flags[i])
+					ints.irq(timer.flags[i])
 				}
 			}
 		} else {
