@@ -127,7 +127,14 @@ fn (mut t Timers) write_16(addr u32, val u16, size u16) {
 
 const flags = [InterruptFlag.timer0, .timer1, .timer2, .timer3]
 
-pub fn (mut t Timers) emulate_cycle(mut ints Interrupts) {
+pub struct TimerApu {
+pub mut:
+	timer1 bool
+	timer2 bool
+}
+
+pub fn (mut t Timers) emulate_cycle(mut ints Interrupts) TimerApu {
+	mut ret := TimerApu{}
 	mut overflowed := false
 	for i in 0 .. 3 {
 		timer := t.timers[i]
@@ -144,6 +151,12 @@ pub fn (mut t Timers) emulate_cycle(mut ints Interrupts) {
 			overflowed = false
 			if will_overflow && t.timers[i].tmcnt_l == 0 {
 				overflowed = true
+				if i == 1 {
+					ret.timer1 = true
+				}
+				if i == 2 {
+					ret.timer2 = true
+				}
 				t.timers[i].tmcnt_l = timer.tmcnt_reload
 				if tmcnt.has(.irq_enable) {
 					ints.irq(timer.flags[i])
@@ -154,4 +167,5 @@ pub fn (mut t Timers) emulate_cycle(mut ints Interrupts) {
 		}
 	}
 	t.count++
+	return ret
 }

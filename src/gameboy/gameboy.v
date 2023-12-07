@@ -5,6 +5,7 @@ import cpu { Cpu }
 import peripherals { Peripherals }
 import peripherals.bios { Bios }
 import peripherals.cartridge { Cartridge }
+import peripherals.joypad { Key }
 
 pub struct Gameboy {
 mut:
@@ -30,20 +31,33 @@ pub fn (mut g Gameboy) run() ! {
 }
 
 pub fn (mut g Gameboy) emulate_cycle() bool {
+	apu_timer := g.peripherals.apu.emulate_cycle()
+	timer_apu := g.peripherals.timers.emulate_cycle(mut g.cpu.interrupts)
+	sound_dma := if apu_timer.sound_a { timer_apu.timer1 } else { timer_apu.timer2 }
+		|| if apu_timer.sound_b { timer_apu.timer1 } else { timer_apu.timer2 }
 	if g.cpu.dma_info == none {
 		if dma_info := g.peripherals.dmas.emulate_cycle(mut g.cpu.interrupts,
 			vblank: g.peripherals.ppu.in_vblank()
 			hblank: g.peripherals.ppu.in_hblank()
+			sound: sound_dma
 		)
 		{
 			g.cpu.dma_info = dma_info
 		}
 	}
+	g.peripherals.joypad.emulate_cycle(mut g.cpu.interrupts)
 	g.cpu.emulate_cycle(mut g.peripherals)
-	g.peripherals.timers.emulate_cycle(mut g.cpu.interrupts)
 	if g.peripherals.ppu.emulate_cycle(mut g.cpu.interrupts) {
 		g.draw_lcd(g.peripherals.ppu.pixel_buffer())
 		return true
 	}
 	return false
+}
+
+fn (mut g Gameboy) on_key_down(k Key) {
+	g.peripherals.joypad.button_down(k)
+}
+
+fn (mut g Gameboy) on_key_up(k Key) {
+	g.peripherals.joypad.button_up(k)
 }

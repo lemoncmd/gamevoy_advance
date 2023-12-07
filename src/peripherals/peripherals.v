@@ -6,6 +6,8 @@ import peripherals.iwram { IWram }
 import peripherals.ppu { Ppu }
 import peripherals.timer { Timers }
 import peripherals.dma { Dmas }
+import peripherals.apu { Apu }
+import peripherals.joypad { Joypad }
 import peripherals.cartridge { Cartridge }
 import cpu.interrupts { Interrupts }
 
@@ -19,6 +21,8 @@ pub mut:
 	ppu    ppu.Ppu
 	timers timer.Timers
 	dmas   dma.Dmas
+	apu    apu.Apu
+	joypad joypad.Joypad
 }
 
 pub fn Peripherals.new(b Bios, c Cartridge) Peripherals {
@@ -30,6 +34,8 @@ pub fn Peripherals.new(b Bios, c Cartridge) Peripherals {
 		ppu: Ppu.new()
 		timers: Timers.new()
 		dmas: Dmas.new()
+		apu: Apu.new()
+		joypad: Joypad.new()
 	}
 }
 
@@ -42,7 +48,14 @@ pub fn (p &Peripherals) read(addr u32, ints &Interrupts) u32 {
 		0x0400_0000...0x0400_005F {
 			p.ppu.read(addr)
 		}
-		0x0400_0060...0x0400_00AB {
+		0x0400_0060...0x0400_0081 {
+			println('unsupported read: ${addr:08x}')
+			0
+		}
+		0x0400_0082 {
+			p.apu.read(addr)
+		}
+		0x0400_0083...0x0400_00AB {
 			println('unsupported read: ${addr:08x}')
 			0
 		}
@@ -51,6 +64,9 @@ pub fn (p &Peripherals) read(addr u32, ints &Interrupts) u32 {
 		}
 		0x0400_0100...0x0400_010F {
 			p.timers.read(addr)
+		}
+		0x0400_0130...0x0400_0132 {
+			p.joypad.read(addr)
 		}
 		0x0400_0200...0x0400_020B {
 			ints.read(addr)
@@ -80,7 +96,13 @@ pub fn (mut p Peripherals) write(addr u32, val u32, size u32, mut ints Interrupt
 		0x0400_0000...0x0400_005F {
 			p.ppu.write(addr, val, size)
 		}
-		0x0400_0060...0x0400_00AF {
+		0x0400_0060...0x0400_0081 {
+			println('unsupported write: ${addr:08x}')
+		}
+		0x0400_0082 {
+			p.ppu.write(addr, val, size)
+		}
+		0x0400_0083...0x0400_00AF {
 			println('unsupported write: ${addr:08x}')
 		}
 		0x0400_00B0...0x0400_00DF {
@@ -92,7 +114,13 @@ pub fn (mut p Peripherals) write(addr u32, val u32, size u32, mut ints Interrupt
 		0x0400_0100...0x0400_010F {
 			p.timers.write(addr, val, size)
 		}
-		0x0400_0110...0x0400_01FF {
+		0x0400_0110...0x0400_0131 {
+			println('unsupported write: ${addr:08x}')
+		}
+		0x0400_0132 {
+			p.joypad.read(addr)
+		}
+		0x0400_0133...0x0400_01FF {
 			println('unsupported write: ${addr:08x}')
 		}
 		0x0400_0200...0x0400_020B {

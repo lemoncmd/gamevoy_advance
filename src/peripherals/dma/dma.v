@@ -68,19 +68,47 @@ pub fn Dmas.new() Dmas {
 
 pub fn (d &Dmas) read(addr u32) u32 {
 	return match addr & 0xFFFF_FFFC {
-		0x0400_00B0 { d.dmas[0].sad }
-		0x0400_00B4 { d.dmas[0].dad }
-		0x0400_00B8 { u32(d.dmas[0].cnt_l) | u32(d.dmas[0].cnt_h) << 16 }
-		0x0400_00BC { d.dmas[1].sad }
-		0x0400_00C0 { d.dmas[1].dad }
-		0x0400_00C4 { u32(d.dmas[1].cnt_l) | u32(d.dmas[1].cnt_h) << 16 }
-		0x0400_00C8 { d.dmas[2].sad }
-		0x0400_00CC { d.dmas[2].dad }
-		0x0400_00D0 { u32(d.dmas[2].cnt_l) | u32(d.dmas[2].cnt_h) << 16 }
-		0x0400_00D4 { d.dmas[3].sad }
-		0x0400_00D8 { d.dmas[3].dad }
-		0x0400_00DC { u32(d.dmas[3].cnt_l) | u32(d.dmas[3].cnt_h) << 16 }
-		else { 0 }
+		0x0400_00B0 {
+			d.dmas[0].sad
+		}
+		0x0400_00B4 {
+			d.dmas[0].dad
+		}
+		0x0400_00B8 {
+			u32(d.dmas[0].cnt_l) | u32(d.dmas[0].cnt_h) << 16
+		}
+		0x0400_00BC {
+			d.dmas[1].sad
+		}
+		0x0400_00C0 {
+			d.dmas[1].dad
+		}
+		0x0400_00C4 {
+			println('fooo')
+			u32(d.dmas[1].cnt_l) | u32(d.dmas[1].cnt_h) << 16
+		}
+		0x0400_00C8 {
+			d.dmas[2].sad
+		}
+		0x0400_00CC {
+			d.dmas[2].dad
+		}
+		0x0400_00D0 {
+			println('yaaa')
+			u32(d.dmas[2].cnt_l) | u32(d.dmas[2].cnt_h) << 16
+		}
+		0x0400_00D4 {
+			d.dmas[3].sad
+		}
+		0x0400_00D8 {
+			d.dmas[3].dad
+		}
+		0x0400_00DC {
+			u32(d.dmas[3].cnt_l) | u32(d.dmas[3].cnt_h) << 16
+		}
+		else {
+			0
+		}
 	} >> ((addr & 3) << 3)
 }
 

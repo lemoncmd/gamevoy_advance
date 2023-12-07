@@ -291,9 +291,18 @@ fn (mut p Ppu) write_16(addr u32, val u16, size u16) {
 			if size == 0xFFFF {
 				p.vram[base_addr >> 1] = u16(val)
 			} else {
-				// TODO 0x14000 in Bitmap mode
-				if base_addr < 0x10000 {
-					p.vram[base_addr >> 1] = u16(val) | u16(val << 8)
+				w_enable := if DispCnt.from(p.dispcnt).bgmode() < 3 {
+					base_addr < 0x10000
+				} else {
+					base_addr < 0x14000
+				}
+				if w_enable {
+					if addr & 1 > 0 {
+						p.vram[base_addr >> 1] &= ~(size << 8)
+						p.vram[base_addr >> 1] |= val << 8
+					} else {
+						p.vram[base_addr >> 1] = val << 8 | val
+					}
 				}
 			}
 		}

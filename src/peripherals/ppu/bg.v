@@ -178,7 +178,16 @@ fn (mut p Ppu) render_bitmap_mode_bg(winflags [240]WindowFlag, mut priorities [2
 	frame_buffer_addr := if bg_mode > 3 && disp_cnt.has(.frame) { 0x5000 } else { 0 }
 	for lx in 0 .. 240 {
 		match bg_mode {
-			3 {}
+			3 {
+				color := Color(p.vram[frame_buffer_addr + ly * 240 + lx])
+
+				p.buffer[int(ly) * 960 + lx * 4] = color.red()
+				p.buffer[int(ly) * 960 + lx * 4 + 1] = color.green()
+				p.buffer[int(ly) * 960 + lx * 4 + 2] = color.blue()
+				p.buffer[int(ly) * 960 + lx * 4 + 3] = 255
+
+				priorities[lx] = bg_cnt.priority()
+			}
 			4 {
 				color_number := p.vram[frame_buffer_addr + ly * 120 + lx >> 1] >> ((lx & 1) << 3)
 				if color_number != 0 {
@@ -193,7 +202,19 @@ fn (mut p Ppu) render_bitmap_mode_bg(winflags [240]WindowFlag, mut priorities [2
 					priorities[lx] = bg_cnt.priority()
 				}
 			}
-			5 {}
+			5 {
+				color := Color(if ly < 128 && lx < 160 {
+					p.vram[frame_buffer_addr + ly * 160 + lx]
+				} else {
+					0
+				})
+
+				p.buffer[int(ly) * 960 + lx * 4] = color.red()
+				p.buffer[int(ly) * 960 + lx * 4 + 1] = color.green()
+				p.buffer[int(ly) * 960 + lx * 4 + 2] = color.blue()
+				p.buffer[int(ly) * 960 + lx * 4 + 3] = 255
+				priorities[lx] = bg_cnt.priority()
+			}
 			else {}
 		}
 	}

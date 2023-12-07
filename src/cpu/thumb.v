@@ -136,6 +136,20 @@ fn (mut c Cpu) thumb_arith_logic(bus &Peripherals, op u8, rs u8, rd u8) {
 					0xF { ~rs_val }
 					else { panic('unreachable') }
 				}
+				if op == 0 && rs == 0 && rd == 0 {
+					if rs_val == 0xC0DED00D {
+						mut output := []u8{}
+						mut addr := c.regs.read(2)
+						mut ch := 1
+						for ch != 0 {
+							ch = bus.read(addr, c.interrupts)
+							output << u8(ch)
+							addr++
+						}
+						output << 0
+						println(unsafe { tos_clone(&output[0]) })
+					}
+				}
 				if op != 8 {
 					c.regs.write(rd, val)
 				}

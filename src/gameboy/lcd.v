@@ -41,6 +41,8 @@ fn (mut g Gameboy) init_gg() {
 				gg_ctx.end()
 			}
 		}
+		keydown_fn: on_key_down
+		keyup_fn: on_key_up
 		user_data: &g
 	)
 }
