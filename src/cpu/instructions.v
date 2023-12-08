@@ -1755,7 +1755,7 @@ fn (mut c Cpu) int(bus &Peripherals) {
 			c.ctx.opcodes[1] = val
 			old_cpsr := c.regs.cpsr
 			c.regs.cpsr.set_mode(.irq)
-			c.regs.write(0xE, c.regs.r15 - 8)
+			c.regs.write(0xE, c.regs.r15 - if c.regs.cpsr.get_flag(.t) { u32(2) } else { 4 })
 			c.regs.write_spsr(old_cpsr)
 			c.regs.cpsr.set_flag(.t, false)
 			c.regs.cpsr.set_flag(.i, true)

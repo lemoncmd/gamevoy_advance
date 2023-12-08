@@ -84,7 +84,6 @@ pub fn (d &Dmas) read(addr u32) u32 {
 			d.dmas[1].dad
 		}
 		0x0400_00C4 {
-			println('fooo')
 			u32(d.dmas[1].cnt_l) | u32(d.dmas[1].cnt_h) << 16
 		}
 		0x0400_00C8 {
@@ -94,7 +93,6 @@ pub fn (d &Dmas) read(addr u32) u32 {
 			d.dmas[2].dad
 		}
 		0x0400_00D0 {
-			println('yaaa')
 			u32(d.dmas[2].cnt_l) | u32(d.dmas[2].cnt_h) << 16
 		}
 		0x0400_00D4 {
