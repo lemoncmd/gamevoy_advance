@@ -10,19 +10,19 @@ game boy advance emulator in V
     - [x] text bg
     - [ ] affine bg
     - [x] bitmap bg
-    - [ ] window
+    - [x] window
     - [x] objwindow
     - [x] priority
     - [x] sprite
-    - [ ] mosaic
+    - [x] mosaic
     - [ ] transparent
     - [ ] blend
-- [ ] timer
-- [ ] dma
+- [x] timer
+- [x] dma
 - [ ] audio
 - [ ] save
 - [ ] serial
-- [ ] joypad
+- [x] joypad
 
 # passing tests
 - jsmolka gba-tests

@@ -3,6 +3,7 @@ module apu
 pub struct Apu {
 mut:
 	cnt_h u16
+	bias  u16
 }
 
 pub fn Apu.new() Apu {
@@ -10,16 +11,18 @@ pub fn Apu.new() Apu {
 }
 
 pub fn (a &Apu) read(addr u32) u32 {
-	return if addr == 0x0400_0082 {
-		a.cnt_h
-	} else {
-		0
+	return match addr {
+		0x0400_0082 { a.cnt_h }
+		0x0400_0088 { a.bias }
+		else { 0 }
 	}
 }
 
 pub fn (mut a Apu) write(addr u32, val u32, size u32) {
-	if addr == 0x0400_0082 && size == 0xFFFF {
-		a.cnt_h = u16(val)
+	match addr {
+		0x0400_0082 { a.cnt_h = u16(val) }
+		0x0400_0088 { a.bias = u16(val) }
+		else {}
 	}
 }
 

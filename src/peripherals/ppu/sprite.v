@@ -78,6 +78,8 @@ fn (mut p Ppu) render_obj(winflags [240]WindowFlag, priorities [240]u8) {
 		if !attr1.has(.affine_enable) {
 			p.render_text_obj(winflags, priorities, attr1.mode(), i, ly, flipped_y, attr1.has(.palette),
 				x_size)
+		} else {
+			panic('cannot render')
 		}
 	}
 }
@@ -116,7 +118,7 @@ fn (mut p Ppu) render_text_obj(winflags [240]WindowFlag, priorities [240]u8, mod
 		palette := if color_mode {
 			// 256 colors
 			Palette(Palette256{
-				number: u8(p.vram[tile_data_address + tile_number << 5 + (flipped_y & 7) << 2 +
+				number: u8(p.vram[tile_data_address + tile_number << 4 + (flipped_y & 7) << 2 +
 					(flipped_x & 7) >> 1] >> ((flipped_x & 1) << 3))
 			})
 		} else {

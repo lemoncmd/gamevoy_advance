@@ -34,8 +34,10 @@ pub fn Cartridge.new(rom_ []u8) Cartridge {
 pub fn (c &Cartridge) read(addr u32) u32 {
 	return match addr >> 24 {
 		0x8...0xD {
-			u32(c.rom[addr & 0x01FF_FFFF]) | u32(c.rom[(addr + 1) & 0x01FF_FFFF]) << 8 | u32(c.rom[(
-				addr + 2) & 0x01FF_FFFF]) << 16 | u32(c.rom[(addr + 3) & 0x01FF_FFFF]) << 24
+			u32(c.rom[addr & 0x01FF_FFFF] or { 0 }) | u32(c.rom[(addr + 1) & 0x01FF_FFFF] or { 0 }) << 8 | u32(c.rom[(
+				addr + 2) & 0x01FF_FFFF] or { 0 }) << 16 | u32(c.rom[(addr + 3) & 0x01FF_FFFF] or {
+				0
+			}) << 24
 		}
 		0xE, 0xF {
 			val := u32(c.ram[addr & 0xFFFF])
