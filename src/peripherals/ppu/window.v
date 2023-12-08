@@ -24,11 +24,45 @@ const all_flags = WindowFlag.bg1_enable | WindowFlag.bg0_enable | WindowFlag.bg2
 
 fn (mut p Ppu) calculate_window(mut winflags [240]WindowFlag) {
 	dispcnt := DispCnt.from(p.dispcnt)
+	mut win_enable := false
 	if dispcnt.has(.obj_enable) && dispcnt.has(.objwin_enable) {
 		p.calculate_obj_window(mut winflags)
-	} else {
+		win_enable = true
+	}
+	if dispcnt.has(.win1_enable) {
+		p.calculate_normal_window(mut winflags, 1)
+		win_enable = true
+	}
+	if dispcnt.has(.win0_enable) {
+		p.calculate_normal_window(mut winflags, 0)
+		win_enable = true
+	}
+	if !win_enable {
 		for i in 0 .. 240 {
 			winflags[i] = ppu.all_flags
+		}
+	}
+}
+
+fn (mut p Ppu) calculate_normal_window(mut winflags [240]WindowFlag, i int) {
+	winflag := unsafe { WindowFlag(u8(p.winin >> (i << 3))) }
+
+	y := if i == 0 { p.win0v } else { p.win1v }
+	y_top := u8(y >> 8)
+	y_bottom_ := u8(y)
+	y_bottom := if y_bottom_ > 160 || y_top > y_bottom_ { 160 } else { y_bottom_ }
+	ly := p.vcount & 0xFF
+	if ly < y_top || y_bottom < ly {
+		return
+	}
+
+	for lx in 0 .. 240 {
+		x := if i == 0 { p.win0h } else { p.win1h }
+		x_left := u8(x >> 8)
+		x_right_ := u8(x)
+		x_right := if x_right_ > 240 || x_left > x_right_ { 240 } else { x_right_ }
+		if x_left <= lx && lx <= x_right {
+			winflags[lx] = winflag
 		}
 	}
 }

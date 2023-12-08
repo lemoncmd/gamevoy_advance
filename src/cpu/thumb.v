@@ -12,7 +12,7 @@ fn (mut c Cpu) thumb_check_cond(bus &Peripherals, cond u8) ? {
 				c.ctx.step = 1
 			}
 			1 {
-				c.fetch(bus)
+				c.fetch(bus) or { return none }
 				c.ctx.step = 0
 			}
 			else {}
