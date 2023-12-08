@@ -296,7 +296,9 @@ pub fn (mut d Dmas) emulate_cycle(mut ints Interrupts, status HookStatus) ?DmaIn
 					dmacnt.clear(.enable)
 				}
 				if dmacnt.has(.irq_enable) {
-					ints.irq(dma.flags[i])
+					// vfmt off
+					ints.irq(flags[i])
+					// vfmt on
 				}
 			}
 

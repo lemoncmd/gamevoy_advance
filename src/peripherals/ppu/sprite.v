@@ -51,7 +51,7 @@ fn (mut p Ppu) render_obj(winflags [240]WindowFlag, priorities [240]u8) {
 		}
 
 		ly := p.vcount & 0xFF
-		y := attr1.y()
+		y := i8(attr1.y())
 		y_size := match attr1.shape() {
 			0 { ppu.shape_length[1][attr2 >> 14] }
 			1 { ppu.shape_length[0][attr2 >> 14] }
@@ -63,11 +63,11 @@ fn (mut p Ppu) render_obj(winflags [240]WindowFlag, priorities [240]u8) {
 			continue
 		}
 
-		flipped_y := if (attr2 >> 13) & 1 > 0 {
-			y_size - (ly - y) - 1
+		flipped_y := u16(if (attr2 >> 13) & 1 > 0 {
+			y_size - (i16(ly) - y) - 1
 		} else {
-			ly - y
-		}
+			i16(ly) - y
+		})
 		x_size := match attr1.shape() {
 			0 { ppu.shape_length[1][attr2 >> 14] }
 			1 { ppu.shape_length[2][attr2 >> 14] }
@@ -86,7 +86,7 @@ fn (mut p Ppu) render_text_obj(winflags [240]WindowFlag, priorities [240]u8, mod
 	attr2 := u16(p.oam[i << 1] >> 16)
 	attr3 := u16(p.oam[i << 1 + 1])
 
-	x := attr2 & 0x1FF
+	x := i16((attr2 & 0x1FF) << 7) >> 7
 	for lx in 0 .. 240 {
 		if !winflags[lx].has(.obj_enable) || priorities[lx] < ((attr3 >> 10) & 3) {
 			continue
@@ -116,7 +116,7 @@ fn (mut p Ppu) render_text_obj(winflags [240]WindowFlag, priorities [240]u8, mod
 		palette := if color_mode {
 			// 256 colors
 			Palette(Palette256{
-				number: u8(p.vram[tile_data_address + tile_number << 4 + (flipped_y & 7) << 2 +
+				number: u8(p.vram[tile_data_address + tile_number << 5 + (flipped_y & 7) << 2 +
 					(flipped_x & 7) >> 1] >> ((flipped_x & 1) << 3))
 			})
 		} else {

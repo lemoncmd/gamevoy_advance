@@ -19,10 +19,17 @@ fn (w WindowFlag) bg_enable(number int) bool {
 	}
 }
 
+// v bug
+const all_flags = WindowFlag.bg1_enable | WindowFlag.bg0_enable | WindowFlag.bg2_enable | WindowFlag.bg3_enable | WindowFlag.obj_enable
+
 fn (mut p Ppu) calculate_window(mut winflags [240]WindowFlag) {
 	dispcnt := DispCnt.from(p.dispcnt)
 	if dispcnt.has(.obj_enable) && dispcnt.has(.objwin_enable) {
 		p.calculate_obj_window(mut winflags)
+	} else {
+		for i in 0 .. 240 {
+			winflags[i] = ppu.all_flags
+		}
 	}
 }
 
@@ -40,7 +47,7 @@ fn (mut p Ppu) calculate_obj_window(mut winflags [240]WindowFlag) {
 		}
 
 		ly := p.vcount & 0xFF
-		y := attr1.y()
+		y := i8(attr1.y())
 		y_size := match attr1.shape() {
 			0 { shape_length[1][attr2 >> 14] }
 			1 { shape_length[0][attr2 >> 14] }
@@ -52,11 +59,11 @@ fn (mut p Ppu) calculate_obj_window(mut winflags [240]WindowFlag) {
 			continue
 		}
 
-		flipped_y := if (attr2 >> 13) & 1 > 0 {
-			y_size - (ly - y) - 1
+		flipped_y := u16(if (attr2 >> 13) & 1 > 0 {
+			y_size - (i16(ly) - y) - 1
 		} else {
-			ly - y
-		}
+			i16(ly) - y
+		})
 		x_size := match attr1.shape() {
 			0 { shape_length[1][attr2 >> 14] }
 			1 { shape_length[2][attr2 >> 14] }
@@ -76,7 +83,7 @@ fn (mut p Ppu) calculate_text_obj(mut winflags [240]WindowFlag, i int, ly int, f
 	attr2 := u16(p.oam[i << 1] >> 16)
 	attr3 := u16(p.oam[i << 1 + 1])
 
-	x := attr2 & 0x1FF
+	x := i16((attr2 & 0x1FF) << 7) >> 7
 	for lx in 0 .. 240 {
 		if lx < x || x + x_size <= lx {
 			continue

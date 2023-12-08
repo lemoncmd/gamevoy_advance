@@ -126,8 +126,14 @@ pub fn (mut p Peripherals) write(addr u32, val u32, size u32, mut ints Interrupt
 		0x0400_0200...0x0400_020B {
 			ints.write(addr, val, size)
 		}
+		0x0400_020C...0x0400_02FF {
+			println('unsupported write: ${addr:08x}')
+		}
 		0x0400_0300...0x0400_0303 {
 			ints.write(addr, val, size)
+		}
+		0x0400_0410...0x0400_0411 {
+			println('unsupported write: ${addr:08x}')
 		}
 		else {
 			match addr >> 24 {

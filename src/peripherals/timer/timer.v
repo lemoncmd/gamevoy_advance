@@ -159,7 +159,9 @@ pub fn (mut t Timers) emulate_cycle(mut ints Interrupts) TimerApu {
 				}
 				t.timers[i].tmcnt_l = timer.tmcnt_reload
 				if tmcnt.has(.irq_enable) {
-					ints.irq(timer.flags[i])
+					// vfmt off
+					ints.irq(flags[i])
+					// vfmt on
 				}
 			}
 		} else {

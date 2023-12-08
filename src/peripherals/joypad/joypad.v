@@ -22,7 +22,7 @@ pub enum Key as u16 {
 	irq_cond
 }
 
-const all_keys = unsafe { Key(0x3F) }
+const all_keys = unsafe { Key(0x3FF) }
 
 pub struct Joypad {
 mut:
