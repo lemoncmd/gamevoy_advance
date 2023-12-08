@@ -86,6 +86,7 @@ fn (mut p Ppu) render_tile_mode_bg(winflags [240]WindowFlag, mut priorities [240
 			}
 		}
 	}
+	layer_to_render.reverse_in_place()
 	for layer in layer_to_render {
 		if bg_mode == 0 || (bg_mode == 1 && layer < 2) {
 			offset_x := match bg_mode {
@@ -156,7 +157,7 @@ fn (mut p Ppu) render_text_layer(winflags [240]WindowFlag, mut priorities [240]u
 			})
 		}
 
-		if !palette.is_transparent() || number == 0 {
+		if !palette.is_transparent() {
 			color := p.get_color_from_palette(false, palette)
 
 			p.buffer[int(ly) * 960 + lx * 4] = color.red()
