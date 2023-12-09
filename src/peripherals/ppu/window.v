@@ -108,6 +108,8 @@ fn (mut p Ppu) calculate_obj_window(mut winflags [240]WindowFlag) {
 		if !attr1.has(.affine_enable) {
 			p.calculate_text_obj(mut winflags, i, ly, flipped_y, attr1.has(.palette),
 				x_size)
+		} else {
+			panic('cannot calculate')
 		}
 	}
 }
