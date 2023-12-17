@@ -31,15 +31,13 @@ pub fn (mut g Gameboy) run() ! {
 }
 
 pub fn (mut g Gameboy) emulate_cycle() bool {
-	apu_timer := g.peripherals.apu.emulate_cycle()
 	timer_apu := g.peripherals.timers.emulate_cycle(mut g.cpu.interrupts)
-	sound_dma := if apu_timer.sound_a { timer_apu.timer1 } else { timer_apu.timer2 }
-		|| if apu_timer.sound_b { timer_apu.timer1 } else { timer_apu.timer2 }
+	apu_timer := g.peripherals.apu.emulate_cycle(timer0: timer_apu.timer0, timer1: timer_apu.timer1)
 	if g.cpu.dma_info == none {
 		if dma_info := g.peripherals.dmas.emulate_cycle(mut g.cpu.interrupts,
 			vblank: g.peripherals.ppu.in_vblank()
 			hblank: g.peripherals.ppu.in_hblank()
-			sound: sound_dma
+			sound: false && apu_timer
 		)
 		{
 			g.cpu.dma_info = dma_info

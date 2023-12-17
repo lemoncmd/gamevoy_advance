@@ -38,3 +38,5 @@ game boy advance emulator in V
 [gba-docs-ja](https://github.com/akatsuki105/gba-docs-ja)
 
 [Tonc](https://www.coranac.com/tonc/text/toc.htm)
+
+[gba開発wiki](https://akkera102.sakura.ne.jp/gbadev/)

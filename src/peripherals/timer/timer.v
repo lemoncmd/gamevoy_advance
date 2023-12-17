@@ -129,8 +129,8 @@ const flags = [InterruptFlag.timer0, .timer1, .timer2, .timer3]
 
 pub struct TimerApu {
 pub mut:
+	timer0 bool
 	timer1 bool
-	timer2 bool
 }
 
 pub fn (mut t Timers) emulate_cycle(mut ints Interrupts) TimerApu {
@@ -151,11 +151,11 @@ pub fn (mut t Timers) emulate_cycle(mut ints Interrupts) TimerApu {
 			overflowed = false
 			if will_overflow && t.timers[i].tmcnt_l == 0 {
 				overflowed = true
+				if i == 0 {
+					ret.timer0 = true
+				}
 				if i == 1 {
 					ret.timer1 = true
-				}
-				if i == 2 {
-					ret.timer2 = true
 				}
 				t.timers[i].tmcnt_l = timer.tmcnt_reload
 				if tmcnt.has(.irq_enable) {
